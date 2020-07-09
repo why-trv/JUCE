@@ -547,7 +547,7 @@ MultiTouchMapper<UITouch*> UIViewComponentPeer::currentTouches;
         #if JUCE_ENABLE_IOS_REPAINT_CACHE
             const auto scale = self.contentScaleFactor;
 
-            if(!bitmapContext || CGBitmapContextGetWidth(bitmapContext) != self.frame.size.width || CGBitmapContextGetHeight(bitmapContext) != self.frame.size.height)
+            if(!bitmapContext || CGBitmapContextGetWidth(bitmapContext) != self.frame.size.width * scale || CGBitmapContextGetHeight(bitmapContext) != self.frame.size.height * scale)
             {
                 if(bitmapContext)
                 {
@@ -563,7 +563,7 @@ MultiTouchMapper<UITouch*> UIViewComponentPeer::currentTouches;
             CGContextRef cg = UIGraphicsGetCurrentContext();
             UIGraphicsPushContext(bitmapContext);
         
-            CoreGraphicsContext g (bitmapContext, self.frame.size.height, scale);
+            CoreGraphicsContext g (bitmapContext, self.frame.size.height);
             CGContextConcatCTM (bitmapContext, CGAffineTransformMakeScale(scale, scale));
             CGContextConcatCTM (bitmapContext, CGAffineTransformMake (1, 0, 0, -1, 0, self.frame.size.height));
             g.clipToRectangleList(dirtyRects);
