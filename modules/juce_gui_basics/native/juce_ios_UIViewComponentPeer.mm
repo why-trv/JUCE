@@ -141,7 +141,7 @@ using namespace juce;
     UITextView* hiddenTextView;
 #if JUCE_ENABLE_IOS_REPAINT_CACHE
 @private
-    CGContextRef bitmapContext;
+    detail::ContextPtr bitmapContext;
     RectangleList<int> dirtyRects;
 #endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
 }
@@ -513,13 +513,6 @@ MultiTouchMapper<UITouch*> UIViewComponentPeer::currentTouches;
 {
     [hiddenTextView removeFromSuperview];
     [hiddenTextView release];
-    
-    #if JUCE_ENABLE_IOS_REPAINT_CACHE
-    if(bitmapContext)
-    {
-        CGContextRelease(bitmapContext);
-    }
-    #endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
 
     [super dealloc];
 }
@@ -546,38 +539,47 @@ MultiTouchMapper<UITouch*> UIViewComponentPeer::currentTouches;
     {
         #if JUCE_ENABLE_IOS_REPAINT_CACHE
             const auto scale = self.contentScaleFactor;
+            const auto frame = self.frame;
 
-            if(!bitmapContext || CGBitmapContextGetWidth(bitmapContext) != self.frame.size.width * scale || CGBitmapContextGetHeight(bitmapContext) != self.frame.size.height * scale)
+            if (bitmapContext == nullptr
+                || CGBitmapContextGetWidth (bitmapContext.get()) != frame.size.width * scale
+                || CGBitmapContextGetHeight (bitmapContext.get()) != frame.size.height * scale)
             {
-                if(bitmapContext)
-                {
-                    CGContextRelease(bitmapContext);
-                }
-                bitmapContext = CGBitmapContextCreate(nullptr, self.frame.size.width * scale, self.frame.size.height * scale, 8, 0, CGColorSpaceCreateDeviceRGB(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
-                
+                auto colourSpace = detail::ColorSpacePtr { CGColorSpaceCreateWithName (kCGColorSpaceSRGB) };
+
+                bitmapContext = detail::ContextPtr {
+                    CGBitmapContextCreate (nullptr,
+                                           static_cast<size_t> (frame.size.width * scale),
+                                           static_cast<size_t> (frame.size.height * scale),
+                                           8, 0, colourSpace.get(),
+                                           kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little)
+                };
+
                 // we re-created the context, so we need to repaint everything
                 dirtyRects.clear();
-                dirtyRects.add(convertToRectInt(self.frame));
+                dirtyRects.add (convertToRectInt (frame));
             }
+
+            auto bitmapContextRef = bitmapContext.get();
         
             CGContextRef cg = UIGraphicsGetCurrentContext();
-            UIGraphicsPushContext(bitmapContext);
+            UIGraphicsPushContext (bitmapContextRef);
         
-            CoreGraphicsContext g (bitmapContext, self.frame.size.height);
-            CGContextConcatCTM (bitmapContext, CGAffineTransformMakeScale(scale, scale));
-            CGContextConcatCTM (bitmapContext, CGAffineTransformMake (1, 0, 0, -1, 0, self.frame.size.height));
-            g.clipToRectangleList(dirtyRects);
+            CoreGraphicsContext g (bitmapContextRef, static_cast<float> (frame.size.height));
+            CGContextConcatCTM (bitmapContextRef, CGAffineTransformMakeScale (scale, scale));
+            CGContextConcatCTM (bitmapContextRef, CGAffineTransformMake (1, 0, 0, -1, 0, frame.size.height));
+            g.clipToRectangleList (dirtyRects);
             dirtyRects.clear();
-            CGContextConcatCTM (bitmapContext, CGAffineTransformMake (1, 0, 0, -1, 0, self.frame.size.height));
+            CGContextConcatCTM (bitmapContextRef, CGAffineTransformMake (1, 0, 0, -1, 0, frame.size.height));
         #endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
-        
+
         owner->drawRect (r);
         
         #if JUCE_ENABLE_IOS_REPAINT_CACHE
             UIGraphicsPopContext();
-            auto imageOfBitmapContext = CGBitmapContextCreateImage(bitmapContext);
-            CGContextDrawImage(cg, self.frame, imageOfBitmapContext);
-            CGImageRelease(imageOfBitmapContext);
+            auto imageOfBitmapContext = CGBitmapContextCreateImage (bitmapContextRef);
+            CGContextDrawImage (cg, frame, imageOfBitmapContext);
+            CGImageRelease (imageOfBitmapContext);
         #endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
  }
 }
