@@ -210,8 +210,10 @@ void ComboBoxParameterAttachment::sendInitialUpdate()
 
 void ComboBoxParameterAttachment::setValue (float newValue)
 {
+    // A hack to workaround conversion issues caused by adding (disabled) dummy items:
+    // using storedParameter.getNumSteps() in place of comboBox.getNumItems()
     const auto normValue = storedParameter.convertTo0to1 (newValue);
-    const auto id = roundToInt (normValue * (float) (comboBox.getNumItems() - 1)) + 1;
+    const auto id = roundToInt (normValue * (float) (storedParameter.getNumSteps() - 1)) + 1;
 
     if (id == comboBox.getSelectedId())
         return;
@@ -225,10 +227,11 @@ void ComboBoxParameterAttachment::comboBoxChanged (ComboBox*)
     if (ignoreCallbacks)
         return;
 
-    const auto numItems = comboBox.getNumItems();
+    // A hack to workaround conversion issues caused by adding (disabled) dummy items:
+    // using storedParameter.getNumSteps() in place of comboBox.getNumItems()
+    const auto numItems = storedParameter.getNumSteps();
     const auto selected = (float) comboBox.getSelectedId() - 1.0f;
-    const auto newValue = numItems > 1 ? selected / (float) (numItems - 1)
-                                       : 0.0f;
+    const auto newValue = numItems > 0 ? selected / (float) (numItems - 1) : 0.0f;
 
     attachment.setValueAsCompleteGesture (storedParameter.convertFrom0to1 (newValue));
 }
