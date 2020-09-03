@@ -129,6 +129,14 @@
  #define JUCE_ENABLE_IOS_REPAINT_CACHE 0
 #endif
 
+/** Config: JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING
+ * This options will call ComponentHelpers::clipObscuredRegions() even for components with
+ * setPaintingIsUnclipped(true) if they have child components. May speed up drawing in some cases.
+*/
+#ifndef JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING
+ #define JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING 0
+#endif
+
 //==============================================================================
 namespace juce
 {
