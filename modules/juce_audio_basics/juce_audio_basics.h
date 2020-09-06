@@ -80,6 +80,15 @@
  #define JUCE_USE_ARM_NEON 0
 #endif
 
+/** Config: JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+ * This options makes juce::FloatVectorOperations and classes that use it under the hood use compiler
+ * auto-vectorization instead of Apple vDSP or JUCE SIMD. As of mid 2020, at least with Clang and ARMv8,
+ * they seem faster.
+*/
+#ifndef JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+ #define JUCE_PREFER_COMPILER_AUTOVECTORIZATION 0
+#endif
+
 //==============================================================================
 #include "buffers/juce_AudioDataConverters.h"
 #include "buffers/juce_FloatVectorOperations.h"
