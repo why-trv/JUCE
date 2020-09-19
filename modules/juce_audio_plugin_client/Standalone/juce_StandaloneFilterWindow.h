@@ -785,10 +785,10 @@ private:
             {
                 auto r = getLocalBounds();
 
-                g.setColour (Colours::darkgoldenrod);
+                g.setColour (Colour (0xffb8360b));
                 g.fillRect (r.removeFromBottom (1));
 
-                g.setColour (Colours::lightgoldenrodyellow);
+                g.setColour (Colour (0xffedbaa8));
                 g.fillRect (r);
             }
 
