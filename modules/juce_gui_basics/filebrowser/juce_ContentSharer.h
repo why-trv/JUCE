@@ -43,7 +43,7 @@ public:
      * Sets the parent component to be used in subsequent calls to iOS native sharer.
      * Required to make ContentSharer work in AUv3 plugins.
      */
-    void setParentComponent(Component* parentComponentToUse);
+    void setParentComponent(Component* parentComponent, Component* sourceComponent = nullptr);
 
     /** Shares the given files. Each URL should be either a full file path
         or it should point to a resource within the application bundle. For
@@ -116,6 +116,7 @@ private:
     std::function<void (bool, String)> callback;
 
     Component* parentComponent = nullptr;
+    Component::SafePointer<Component> sourceComponent;
 
   #if JUCE_CONTENT_SHARING
     struct Pimpl
