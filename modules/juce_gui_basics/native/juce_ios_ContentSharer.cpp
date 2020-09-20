@@ -110,12 +110,17 @@ private:
             ignoreUnused (type);
             ignoreUnused (returnedItems);
 
-            succeeded = completed;
+            // An activity may be cancelled while UIActivityViewController is still being presented,
+            // so proceed only if either the activity is completed or the UIActivityViewController
+            // itself is cancelled (in that case type will be nil)
+            if (type == nil || completed) {
+                succeeded = completed;
 
-            if (error != nil)
-                errorDescription = nsStringToJuce ([error localizedDescription]);
+                if (error != nil)
+                    errorDescription = nsStringToJuce ([error localizedDescription]);
 
-            exitModalState (0);
+                exitModalState (0);
+            }
         };
 
         controller.get().modalTransitionStyle = UIModalTransitionStyleCoverVertical;
