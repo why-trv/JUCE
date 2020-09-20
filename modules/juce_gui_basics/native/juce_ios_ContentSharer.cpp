@@ -129,8 +129,13 @@ private:
         setBounds (bounds);
 
         setAlwaysOnTop (true);
-        setVisible (true);
-        addToDesktop (0);
+
+        if (owner.parentComponent != nullptr) {
+            owner.parentComponent->addAndMakeVisible (this);
+        } else {
+            setVisible (true);
+            addToDesktop (0);
+        }
 
         enterModalState (true,
                          ModalCallbackFunction::create ([this] (int)
@@ -158,11 +163,11 @@ private:
             {
                 controller.get().preferredContentSize = peer->view.frame.size;
 
-                auto screenBounds = [UIScreen mainScreen].bounds;
+                auto bounds = peer->view.bounds;
 
                 auto* popoverController = controller.get().popoverPresentationController;
                 popoverController.sourceView = peer->view;
-                popoverController.sourceRect = CGRectMake (0.f, screenBounds.size.height - 10.f, screenBounds.size.width, 10.f);
+                popoverController.sourceRect = CGRectMake (0.f, bounds.size.height - 10.f, bounds.size.width, 10.f);
                 popoverController.canOverlapSourceViewRect = YES;
                 popoverController.delegate = popoverDelegate.get();
             }
