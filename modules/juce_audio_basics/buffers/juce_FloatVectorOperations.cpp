@@ -318,6 +318,10 @@ namespace FloatVectorHelpers
    #endif
 
     //==============================================================================
+    #define JUCE_NAIVE_VEC_LOOP(normalOp) \
+        _Pragma("clang loop vectorize(enable) interleave(enable)") \
+        for (int i = 0; i < num; ++i) { normalOp; }
+
     #define JUCE_VEC_LOOP(vecOp, srcLoad, dstLoad, dstStore, locals, increment) \
         for (int i = 0; i < numLongOps; ++i) \
         { \
@@ -571,7 +575,9 @@ void JUCE_CALLTYPE FloatVectorOperations::copyWithMultiply (double* dest, const 
 
 void JUCE_CALLTYPE FloatVectorOperations::add (float* dest, float amount, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] += amount)
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vsadd (dest, 1, &amount, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_DEST (dest[i] += amount, Mode::add (d, amountToAdd), JUCE_LOAD_DEST,
@@ -587,7 +593,9 @@ void JUCE_CALLTYPE FloatVectorOperations::add (double* dest, double amount, int 
 
 void JUCE_CALLTYPE FloatVectorOperations::add (float* dest, const float* src, float amount, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] = src[i] + amount)
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vsadd (osx108sdkCompatibilityCast (src), 1, &amount, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC_DEST (dest[i] = src[i] + amount, Mode::add (am, s),
@@ -609,7 +617,9 @@ void JUCE_CALLTYPE FloatVectorOperations::add (double* dest, const double* src, 
 
 void JUCE_CALLTYPE FloatVectorOperations::add (float* dest, const float* src, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] += src[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vadd (src, 1, dest, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC_DEST (dest[i] += src[i], Mode::add (d, s), JUCE_LOAD_SRC_DEST, JUCE_INCREMENT_SRC_DEST, )
@@ -627,7 +637,9 @@ void JUCE_CALLTYPE FloatVectorOperations::add (double* dest, const double* src, 
 
 void JUCE_CALLTYPE FloatVectorOperations::add (float* dest, const float* src1, const float* src2, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] = src1[i] + src2[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vadd (src1, 1, src2, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC1_SRC2_DEST (dest[i] = src1[i] + src2[i], Mode::add (s1, s2), JUCE_LOAD_SRC1_SRC2, JUCE_INCREMENT_SRC1_SRC2_DEST, )
@@ -645,7 +657,9 @@ void JUCE_CALLTYPE FloatVectorOperations::add (double* dest, const double* src1,
 
 void JUCE_CALLTYPE FloatVectorOperations::subtract (float* dest, const float* src, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] -= src[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vsub (src, 1, dest, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC_DEST (dest[i] -= src[i], Mode::sub (d, s), JUCE_LOAD_SRC_DEST, JUCE_INCREMENT_SRC_DEST, )
@@ -663,7 +677,9 @@ void JUCE_CALLTYPE FloatVectorOperations::subtract (double* dest, const double* 
 
 void JUCE_CALLTYPE FloatVectorOperations::subtract (float* dest, const float* src1, const float* src2, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] = src1[i] - src2[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vsub (src2, 1, src1, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC1_SRC2_DEST (dest[i] = src1[i] - src2[i], Mode::sub (s1, s2), JUCE_LOAD_SRC1_SRC2, JUCE_INCREMENT_SRC1_SRC2_DEST, )
@@ -681,7 +697,9 @@ void JUCE_CALLTYPE FloatVectorOperations::subtract (double* dest, const double* 
 
 void JUCE_CALLTYPE FloatVectorOperations::addWithMultiply (float* dest, const float* src, float multiplier, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] += src[i] * multiplier)
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vsma (src, 1, &multiplier, dest, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC_DEST (dest[i] += src[i] * multiplier, Mode::add (d, Mode::mul (mult, s)),
@@ -703,7 +721,9 @@ void JUCE_CALLTYPE FloatVectorOperations::addWithMultiply (double* dest, const d
 
 void JUCE_CALLTYPE FloatVectorOperations::addWithMultiply (float* dest, const float* src1, const float* src2, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] += src1[i] * src2[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vma ((float*) src1, 1, (float*) src2, 1, dest, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC1_SRC2_DEST_DEST (dest[i] += src1[i] * src2[i], Mode::add (d, Mode::mul (s1, s2)),
@@ -753,7 +773,9 @@ void JUCE_CALLTYPE FloatVectorOperations::subtractWithMultiply (double* dest, co
 
 void JUCE_CALLTYPE FloatVectorOperations::multiply (float* dest, const float* src, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] *= src[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vmul (src, 1, dest, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC_DEST (dest[i] *= src[i], Mode::mul (d, s), JUCE_LOAD_SRC_DEST, JUCE_INCREMENT_SRC_DEST, )
@@ -771,7 +793,9 @@ void JUCE_CALLTYPE FloatVectorOperations::multiply (double* dest, const double* 
 
 void JUCE_CALLTYPE FloatVectorOperations::multiply (float* dest, const float* src1, const float* src2, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] = src1[i] * src2[i])
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vmul (src1, 1, src2, 1, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_SRC1_SRC2_DEST (dest[i] = src1[i] * src2[i], Mode::mul (s1, s2), JUCE_LOAD_SRC1_SRC2, JUCE_INCREMENT_SRC1_SRC2_DEST, )
@@ -789,7 +813,9 @@ void JUCE_CALLTYPE FloatVectorOperations::multiply (double* dest, const double* 
 
 void JUCE_CALLTYPE FloatVectorOperations::multiply (float* dest, float multiplier, int num) noexcept
 {
-   #if JUCE_USE_VDSP_FRAMEWORK
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] *= multiplier)
+   #elif JUCE_USE_VDSP_FRAMEWORK
     vDSP_vsmul (dest, 1, &multiplier, dest, 1, (vDSP_Length) num);
    #else
     JUCE_PERFORM_VEC_OP_DEST (dest[i] *= multiplier, Mode::mul (d, mult), JUCE_LOAD_DEST,
@@ -809,9 +835,15 @@ void JUCE_CALLTYPE FloatVectorOperations::multiply (double* dest, double multipl
 
 void JUCE_CALLTYPE FloatVectorOperations::multiply (float* dest, const float* src, float multiplier, int num) noexcept
 {
+   #if JUCE_PREFER_COMPILER_AUTOVECTORIZATION
+    JUCE_NAIVE_VEC_LOOP (dest[i] = src[i] * multiplier)
+   #elif JUCE_USE_VDSP_FRAMEWORK
+    vDSP_vsmul (src, 1, &multiplier, dest, 1, (vDSP_Length) num);
+   #else
     JUCE_PERFORM_VEC_OP_SRC_DEST (dest[i] = src[i] * multiplier, Mode::mul (mult, s),
                                   JUCE_LOAD_SRC, JUCE_INCREMENT_SRC_DEST,
                                   const Mode::ParallelType mult = Mode::load1 (multiplier);)
+   #endif
 }
 
 void JUCE_CALLTYPE FloatVectorOperations::multiply (double* dest, const double* src, double multiplier, int num) noexcept

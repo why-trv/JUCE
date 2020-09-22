@@ -1914,7 +1914,11 @@ void Component::paintComponentAndChildren (Graphics& g)
 {
     auto clipBounds = g.getClipBounds();
 
+#if JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING
+    if (flags.dontClipGraphicsFlag && getNumChildComponents() == 0)
+#else
     if (flags.dontClipGraphicsFlag)
+#endif
     {
         paint (g);
     }
