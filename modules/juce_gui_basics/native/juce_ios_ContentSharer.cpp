@@ -112,10 +112,12 @@ private:
             ignoreUnused (type);
             ignoreUnused (returnedItems);
 
-            // An activity may be cancelled while UIActivityViewController is still being presented,
-            // so proceed only if either the activity is completed or the UIActivityViewController
-            // itself is cancelled (in that case type will be nil)
-            if (type == nil || completed) {
+            // In some odd cases (e.g. with 'Save to Files' activity, but only if it's dismissed
+            // by tapping Cancel and not outside the modal window), completionWithItemsHandler
+            // may be called twice: when an activity is cancelled and when the
+            // UIActivityViewController itself is dismissed. We must make sure exitModalState()
+            // doesn't get called twice - checking presentingViewController seems to do the trick.
+            if (controller.get().presentingViewController == nil) {
                 succeeded = completed;
 
                 if (error != nil)
