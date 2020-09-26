@@ -151,6 +151,8 @@ ContentSharer::ContentSharer() {}
 ContentSharer::~ContentSharer() { clearSingletonInstance(); }
 
 void ContentSharer::setParentComponent(Component* parentComponentToUse, Component* sourceComponentToUse) {
+    jassert(pimpl == nullptr);
+
     parentComponent = parentComponentToUse;
     sourceComponent = sourceComponentToUse;
 }
