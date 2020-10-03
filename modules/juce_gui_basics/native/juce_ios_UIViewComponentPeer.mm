@@ -201,6 +201,7 @@ public:
 
     Rectangle<int> getBounds() const override               { return getBounds (! isSharedWindow); }
     Rectangle<int> getBounds (bool global) const;
+    BorderSize<int> getSafeAreaInsets() const override;
     Point<float> localToGlobal (Point<float> relativePosition) override;
     Point<float> globalToLocal (Point<float> screenPosition) override;
     using ComponentPeer::localToGlobal;
@@ -641,6 +642,17 @@ Rectangle<int> UIViewComponentPeer::getBounds (const bool global) const
     }
 
     return convertToRectInt (r);
+}
+
+BorderSize<int> UIViewComponentPeer::getSafeAreaInsets() const
+{
+    if (@available(iOS 11.0, *))
+    {
+        auto i = view.safeAreaInsets;
+        return { roundToInt (i.top), roundToInt (i.left), roundToInt (i.bottom), roundToInt (i.right) };
+    }
+    
+    return {};
 }
 
 Point<float> UIViewComponentPeer::localToGlobal (Point<float> relativePosition)
