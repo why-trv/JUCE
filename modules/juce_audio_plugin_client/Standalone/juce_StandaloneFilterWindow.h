@@ -794,7 +794,15 @@ private:
 
             void resized() override
             {
-                auto r = getLocalBounds().reduced (5);
+                auto peer = getPeer();
+                auto insets = peer != nullptr ? peer->getSafeAreaInsets() : BorderSize<int>();
+                
+                insets.setLeft (jmax (insets.getLeft(), 5));
+                insets.setRight (jmax (insets.getRight(), 5));
+                insets.setTop (5);
+                insets.setBottom (5);
+
+                auto r = insets.subtractedFrom (getLocalBounds());
 
                 settingsButton.setBounds (r.removeFromRight (70));
                 notification.setBounds (r);
