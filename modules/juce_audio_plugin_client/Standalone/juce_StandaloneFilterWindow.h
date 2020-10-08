@@ -785,18 +785,26 @@ private:
             {
                 auto r = getLocalBounds();
 
-                g.setColour (Colours::darkgoldenrod);
+                g.setColour (Colour (0xffb8360b));
                 g.fillRect (r.removeFromBottom (1));
 
-                g.setColour (Colours::lightgoldenrodyellow);
+                g.setColour (Colour (0xffedbaa8));
                 g.fillRect (r);
             }
 
             void resized() override
             {
-                auto r = getLocalBounds().reduced (5);
+                auto peer = getPeer();
+                auto insets = peer != nullptr ? peer->getSafeAreaInsets() : BorderSize<int>();
+                
+                insets.setLeft (jmax (insets.getLeft(), 5));
+                insets.setRight (jmax (insets.getRight(), 5));
+                insets.setTop (5);
+                insets.setBottom (5);
 
-                settingsButton.setBounds (r.removeFromRight (70));
+                auto r = insets.subtractedFrom (getLocalBounds());
+
+                settingsButton.setBounds (r.removeFromRight (80));
                 notification.setBounds (r);
             }
         private:
