@@ -114,6 +114,11 @@ using namespace juce;
 @public
     UIViewComponentPeer* owner;
     UITextView* hiddenTextView;
+#if JUCE_ENABLE_IOS_REPAINT_CACHE
+@private
+    detail::ContextPtr bitmapContext;
+    RectangleList<int> dirtyRects;
+#endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
 }
 
 - (JuceUIView*) initWithOwner: (UIViewComponentPeer*) owner withFrame: (CGRect) frame;
@@ -201,6 +206,7 @@ public:
 
     Rectangle<int> getBounds() const override               { return getBounds (! isSharedWindow); }
     Rectangle<int> getBounds (bool global) const;
+    BorderSize<int> getSafeAreaInsets() const override;
     Point<float> localToGlobal (Point<float> relativePosition) override;
     Point<float> globalToLocal (Point<float> screenPosition) override;
     using ComponentPeer::localToGlobal;
@@ -426,11 +432,71 @@ MultiTouchMapper<UITouch*> UIViewComponentPeer::currentTouches;
     [super dealloc];
 }
 
+#if JUCE_ENABLE_IOS_REPAINT_CACHE
+- (void) setNeedsDisplay
+{
+    dirtyRects.clear();
+    dirtyRects.add(convertToRectInt(self.frame));
+    [super setNeedsDisplay];
+}
+
+- (void) setNeedsDisplayInRect: (CGRect) r
+{
+    dirtyRects.add(convertToRectInt(r));
+    [super setNeedsDisplayInRect:r];
+}
+#endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
+
 //==============================================================================
 - (void) drawRect: (CGRect) r
 {
     if (owner != nullptr)
+    {
+        #if JUCE_ENABLE_IOS_REPAINT_CACHE
+            const auto scale = self.contentScaleFactor;
+            const auto frame = self.frame;
+
+            if (bitmapContext == nullptr
+                || CGBitmapContextGetWidth (bitmapContext.get()) != frame.size.width * scale
+                || CGBitmapContextGetHeight (bitmapContext.get()) != frame.size.height * scale)
+            {
+                auto colourSpace = detail::ColorSpacePtr { CGColorSpaceCreateWithName (kCGColorSpaceSRGB) };
+
+                bitmapContext = detail::ContextPtr {
+                    CGBitmapContextCreate (nullptr,
+                                           static_cast<size_t> (frame.size.width * scale),
+                                           static_cast<size_t> (frame.size.height * scale),
+                                           8, 0, colourSpace.get(),
+                                           kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little)
+                };
+
+                // we re-created the context, so we need to repaint everything
+                dirtyRects.clear();
+                dirtyRects.add (convertToRectInt (frame));
+            }
+
+            auto bitmapContextRef = bitmapContext.get();
+        
+            CGContextRef cg = UIGraphicsGetCurrentContext();
+            UIGraphicsPushContext (bitmapContextRef);
+        
+            CoreGraphicsContext g (bitmapContextRef, static_cast<float> (frame.size.height));
+            CGContextConcatCTM (bitmapContextRef, CGAffineTransformMakeScale (scale, scale));
+            CGContextConcatCTM (bitmapContextRef, CGAffineTransformMake (1, 0, 0, -1, 0, frame.size.height));
+            g.clipToRectangleList (dirtyRects);
+            dirtyRects.clear();
+            CGContextConcatCTM (bitmapContextRef, CGAffineTransformMake (1, 0, 0, -1, 0, frame.size.height));
+        #endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
+
         owner->drawRect (r);
+        
+        #if JUCE_ENABLE_IOS_REPAINT_CACHE
+            UIGraphicsPopContext();
+            auto imageOfBitmapContext = CGBitmapContextCreateImage (bitmapContextRef);
+            CGContextDrawImage (cg, frame, imageOfBitmapContext);
+            CGImageRelease (imageOfBitmapContext);
+        #endif /* JUCE_ENABLE_IOS_REPAINT_CACHE */
+ }
 }
 
 //==============================================================================
@@ -641,6 +707,17 @@ Rectangle<int> UIViewComponentPeer::getBounds (const bool global) const
     }
 
     return convertToRectInt (r);
+}
+
+BorderSize<int> UIViewComponentPeer::getSafeAreaInsets() const
+{
+    if (@available(iOS 11.0, *))
+    {
+        auto i = view.safeAreaInsets;
+        return { roundToInt (i.top), roundToInt (i.left), roundToInt (i.bottom), roundToInt (i.right) };
+    }
+    
+    return {};
 }
 
 Point<float> UIViewComponentPeer::localToGlobal (Point<float> relativePosition)
