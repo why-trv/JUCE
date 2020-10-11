@@ -824,7 +824,10 @@ public:
                                                               : jlimit (0.0, 1.0, newPos);
             valueWhenLastDragged = owner.proportionOfLengthToValue (newPos);
 
+#if ! JUCE_IOS
+            // TODO: Figure out what goes wrong here when reaching the top edge of AUv3 window
             e.source.enableUnboundedMouseMovement (true, false);
+#endif
         }
     }
 
