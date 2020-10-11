@@ -1410,7 +1410,8 @@ private:
                 {
                     const AUParameterEvent& paramEvent = event->parameter;
 
-                    if (auto* p = getJuceParameterForAUAddress (paramEvent.parameterAddress)) {
+                    if (auto* p = getJuceParameterForAUAddress (paramEvent.parameterAddress))
+                    {
                         auto normalisedValue = paramEvent.value / getMaximumParameterValue (p);
                         setAudioProcessorParameter (p, normalisedValue);
                     }
