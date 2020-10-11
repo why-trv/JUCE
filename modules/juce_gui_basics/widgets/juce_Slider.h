@@ -222,6 +222,9 @@ public:
                                     bool userCanPressKeyToSwapMode = true,
                                     ModifierKeys::Flags modifiersToSwapModes = ModifierKeys::ctrlAltCommandModifiers);
 
+    /** Sets a custom function to use for velocity-sensitive mode. */
+    void setVelocityModeFunction (std::function<double (double speed)> fn);
+
     /** Returns the velocity sensitivity setting.
         @see setVelocityModeParameters
     */
