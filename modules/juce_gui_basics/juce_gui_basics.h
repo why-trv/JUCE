@@ -35,7 +35,7 @@
 
   ID:                 juce_gui_basics
   vendor:             juce
-  version:            6.0.1
+  version:            6.0.3
   name:               JUCE GUI core classes
   description:        Basic user-interface components and related classes.
   website:            http://www.juce.com/juce
@@ -115,6 +115,26 @@
 */
 #ifndef JUCE_WIN_PER_MONITOR_DPI_AWARE
  #define JUCE_WIN_PER_MONITOR_DPI_AWARE 1
+#endif
+
+/** Config: JUCE_ENABLE_IOS_REPAINT_CACHE
+ If this option is turned on, Components will be painted into a bitmap context on iOS
+ and only the portions requested by repaint() will be repainted (instead of everything!).
+ If this option is off, all components are repainted regardless the rectangle passed to
+ repaint(). Enabling this option can significantly speed up drawing if you're doing CPU
+ intensive things in your paint() calls or if you have a lot of components. it may
+ however slow things down, if your drawing code is simple.
+ */
+#ifndef JUCE_ENABLE_IOS_REPAINT_CACHE
+ #define JUCE_ENABLE_IOS_REPAINT_CACHE 0
+#endif
+
+/** Config: JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING
+ * This options will call ComponentHelpers::clipObscuredRegions() even for components with
+ * setPaintingIsUnclipped(true) if they have child components. May speed up drawing in some cases.
+*/
+#ifndef JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING
+ #define JUCE_CLIP_OBSCURED_REGIONS_FOR_UNCLIPPED_PAINTING 0
 #endif
 
 //==============================================================================

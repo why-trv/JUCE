@@ -481,6 +481,11 @@ public:
         modifierToSwapModes = newModifierToSwapModes;
     }
 
+    void setVelocityModeFunction (std::function<double (double)> fn)
+    {
+        velocityModeFunction = fn;
+    }
+
     void setIncDecButtonsMode (IncDecButtonMode mode)
     {
         if (incDecButtonMode != mode)
@@ -795,11 +800,18 @@ public:
 
         if (speed != 0.0)
         {
-            speed = 0.2 * velocityModeSensitivity
-                      * (1.0 + std::sin (MathConstants<double>::pi * (1.5 + jmin (0.5, velocityModeOffset
-                                                                                         + jmax (0.0, (double) (speed - velocityModeThreshold))
-                                                                                            / maxSpeed))));
-
+            if (velocityModeFunction != nullptr)
+            {
+                speed = velocityModeFunction(speed);
+            }
+            else
+            {
+                speed = 0.2 * velocityModeSensitivity
+                          * (1.0 + std::sin (MathConstants<double>::pi * (1.5 + jmin (0.5, velocityModeOffset
+                                                                                             + jmax (0.0, (double) (speed - velocityModeThreshold))
+                                                                                                / maxSpeed))));
+            }
+            
             if (mouseDiff < 0)
                 speed = -speed;
 
@@ -812,7 +824,10 @@ public:
                                                               : jlimit (0.0, 1.0, newPos);
             valueWhenLastDragged = owner.proportionOfLengthToValue (newPos);
 
+#if ! JUCE_IOS
+            // TODO: Figure out what goes wrong here when reaching the top edge of AUv3 window
             e.source.enableUnboundedMouseMovement (true, false);
+#endif
         }
     }
 
@@ -1250,6 +1265,7 @@ public:
     double valueWhenLastDragged = 0, valueOnMouseDown = 0, lastAngle = 0;
     double velocityModeSensitivity = 1.0, velocityModeOffset = 0, minMaxDiff = 0;
     int velocityModeThreshold = 1;
+    std::function<double (double)> velocityModeFunction;
     RotaryParameters rotaryParams;
     Point<float> mouseDragStartPos, mousePosWhenLastDragged;
     int sliderRegionStart = 0, sliderRegionSize = 1;
@@ -1434,6 +1450,11 @@ void Slider::setVelocityModeParameters (double sensitivity, int threshold,
 
     pimpl->setVelocityModeParameters (sensitivity, threshold, offset,
                                       userCanPressKeyToSwapMode, modifierToSwapModes);
+}
+
+void Slider::setVelocityModeFunction (std::function <double (double)> fn)
+{
+    pimpl->setVelocityModeFunction (fn);
 }
 
 double Slider::getSkewFactor() const noexcept               { return pimpl->normRange.skew; }
