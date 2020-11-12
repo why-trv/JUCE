@@ -402,9 +402,9 @@ struct FlexBoxLayoutCalculation
                     else if (owner.alignItems == FlexBox::AlignItems::center)
                     {
                         if (isRowDirection)
-                            item.lockedMarginTop = (lineSize - item.lockedHeight - item.item->margin.top - item.item->margin.bottom) / 2;
+                            item.lockedMarginTop = item.item->margin.top + (lineSize - item.lockedHeight - item.item->margin.top - item.item->margin.bottom) / 2;
                         else
-                            item.lockedMarginLeft = (lineSize - item.lockedWidth - item.item->margin.left - item.item->margin.right) / 2;
+                            item.lockedMarginLeft = item.item->margin.left + (lineSize - item.lockedWidth - item.item->margin.left - item.item->margin.right) / 2;
                     }
                 }
             }
