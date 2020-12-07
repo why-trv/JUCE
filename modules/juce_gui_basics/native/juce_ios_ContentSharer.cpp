@@ -129,7 +129,7 @@ private:
 
         controller.get().modalTransitionStyle = UIModalTransitionStyleCoverVertical;
 
-        auto bounds = Desktop::getInstance().getDisplays().getMainDisplay().userArea;
+        auto bounds = Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
         setBounds (bounds);
 
         setAlwaysOnTop (true);

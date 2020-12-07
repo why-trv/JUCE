@@ -412,11 +412,13 @@ attributes directly to these creation functions, rather than adding them later.
 
 - `PLUGIN_MANUFACTURER_CODE`
   - A four-character unique ID for your company. For AU compatibility, this must contain at least
-    one upper-case letter.
+    one upper-case letter. GarageBand 10.3 requires the first letter to be upper-case, and the
+    remaining letters to be lower-case.
 
 - `PLUGIN_CODE`
-  - A four-character unique ID for your plugin. For AU compatibility, this must contain at least
-    one upper-case letter.
+  - A four-character unique ID for your plugin. For AU compatibility, this must contain exactly one
+    upper-case letter. GarageBand 10.3 requires the first letter to be upper-case, and the remaining
+    letters to be lower-case.
 
 - `DESCRIPTION`
   - A short description of your plugin.
@@ -480,6 +482,13 @@ attributes directly to these creation functions, rather than adding them later.
 - `AU_SANDBOX_SAFE`
   - May be either TRUE or FALSE. Adds the appropriate entries to an AU plugin's Info.plist.
 
+- `SUPPRESS_AU_PLIST_RESOURCE_USAGE`
+  - May be either TRUE or FALSE. Defaults to FALSE. Set this to TRUE to disable the `resourceUsage`
+    key in the target's plist. This is useful for AU plugins that must access resources which cannot
+    be declared in the resourceUsage block, such as UNIX domain sockets. In particular,
+    PACE-protected AU plugins may require this option to be enabled in order for the plugin to load
+    in GarageBand.
+
 - `AAX_CATEGORY`
   - Should be one of: `AAX_ePlugInCategory_None`, `AAX_ePlugInCategory_EQ`,
     `AAX_ePlugInCategory_Dynamics`, `AAX_ePlugInCategory_PitchShift`, `AAX_ePlugInCategory_Reverb`,
@@ -494,6 +503,13 @@ attributes directly to these creation functions, rather than adding them later.
     `JUCE_PLUGINHOST_AU=1` to the new target, and will link the macOS frameworks necessary for
     hosting plugins. Using this parameter should be preferred over using
     `target_compile_definitions` to manually set the `JUCE_PLUGINHOST_AU` preprocessor definition.
+
+- `USE_LEGACY_COMPATIBILITY_PLUGIN_CODE`
+  - May be either TRUE or FALSE (defaults to FALSE). If TRUE, will override the value of the
+    preprocessor definition "JucePlugin_ManufacturerCode" with the hex equivalent of "proj". This
+    option exists to maintain compatiblity with a previous, buggy version of JUCE's CMake support
+    which mishandled the manufacturer code property. Most projects should leave this option set to
+    its default value.
 
 - `COPY_PLUGIN_AFTER_BUILD`
   - Whether or not to install the plugin to the current system after building. False by default.
@@ -639,21 +655,37 @@ CMake-supplied defaults.
 
 #### `juce::juce_recommended_warning_flags`
 
-    target_link_libraries(myTarget PRIVATE juce::juce_recommended_warning_flags)
+    target_link_libraries(myTarget PUBLIC juce::juce_recommended_warning_flags)
 
 This is a target which can be linked to other targets using `target_link_libraries`, in order to
 enable the recommended JUCE warnings when building them.
 
+This target just sets compiler and linker flags, and doesn't have any associated libraries or
+include directories. When building plugins, it's probably desirable to link this to the shared code
+target with `PUBLIC` visibility, so that all the plugin wrappers inherit the same compile/link
+flags.
+
 #### `juce::juce_recommended_config_flags`
 
-    target_link_libraries(myTarget PRIVATE juce::juce_recommended_config_flags)
+    target_link_libraries(myTarget PUBLIC juce::juce_recommended_config_flags)
 
 This is a target which can be linked to other targets using `target_link_libraries`, in order to
 enable the recommended JUCE optimisation and debug flags.
 
+This target just sets compiler and linker flags, and doesn't have any associated libraries or
+include directories. When building plugins, it's probably desirable to link this to the shared code
+target with `PUBLIC` visibility, so that all the plugin wrappers inherit the same compile/link
+flags.
+
 #### `juce::juce_recommended_lto_flags`
 
-    target_link_libraries(myTarget PRIVATE juce::juce_recommended_lto_flags)
+    target_link_libraries(myTarget PUBLIC juce::juce_recommended_lto_flags)
 
 This is a target which can be linked to other targets using `target_link_libraries`, in order to
 enable the recommended JUCE link time optimisation settings.
+
+This target just sets compiler and linker flags, and doesn't have any associated libraries or
+include directories. When building plugins, it's probably desirable to link this to the shared code
+target with `PUBLIC` visibility, so that all the plugin wrappers inherit the same compile/link
+flags.
+
