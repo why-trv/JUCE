@@ -339,7 +339,7 @@ String AudioDeviceManager::initialiseFromXML (const XmlElement& xml,
     midiDeviceInfosFromXml.clear();
     enabledMidiInputs.clear();
 
-    forEachXmlChildElementWithTagName (xml, c, "MIDIINPUT")
+    for (auto* c : xml.getChildWithTagNameIterator ("MIDIINPUT"))
         midiDeviceInfosFromXml.add ({ c->getStringAttribute ("name"), c->getStringAttribute ("identifier") });
 
     auto isIdentifierAvailable = [] (const Array<MidiDeviceInfo>& available, const String& identifier)
@@ -704,7 +704,7 @@ void AudioDeviceManager::restartLastAudioDevice()
         {
             // This method will only reload the last device that was running
             // before closeAudioDevice() was called - you need to actually open
-            // one first, with setAudioDevice().
+            // one first, with setAudioDeviceSetup().
             jassertfalse;
             return;
         }

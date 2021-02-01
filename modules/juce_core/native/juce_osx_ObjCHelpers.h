@@ -215,7 +215,7 @@ CGRect makeCGRect (const RectangleType& r) noexcept
     #endif
  };
 
- template<>
+ template <>
  struct NeedsStret<void> { static constexpr auto value = false; };
 
  template <typename T, bool b = NeedsStret<T>::value>
