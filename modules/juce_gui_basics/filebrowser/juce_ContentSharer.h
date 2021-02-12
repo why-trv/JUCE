@@ -115,10 +115,10 @@ private:
 
     std::function<void (bool, String)> callback;
 
+  #if JUCE_CONTENT_SHARING
     Component* parentComponent = nullptr;
     Component::SafePointer<Component> sourceComponent;
 
-  #if JUCE_CONTENT_SHARING
     struct Pimpl
     {
         virtual ~Pimpl() {}

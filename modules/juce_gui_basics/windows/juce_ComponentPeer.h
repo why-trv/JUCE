@@ -151,7 +151,7 @@ public:
     virtual Rectangle<int> getBounds() const = 0;
 
     /** Returns the safe area insets imposed by non-rectangular device screen shapes */
-    virtual BorderSize<int> getSafeAreaInsets() const { return {}; };
+    virtual BorderSize<int> getSafeAreaInsets() const { return {}; }
 
     /** Converts a position relative to the top-left of this component to screen coordinates. */
     virtual Point<float> localToGlobal (Point<float> relativePosition) = 0;
