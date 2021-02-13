@@ -795,7 +795,11 @@ private:
             void resized() override
             {
                 auto peer = getPeer();
-                auto insets = peer != nullptr ? peer->getSafeAreaInsets() : BorderSize<int>();
+                auto insets = peer != nullptr
+                            ? juce::Desktop::getInstance()
+                                            .getDisplays()
+                                            .getDisplayForRect(peer->getComponent().getScreenBounds())->safeAreaInsets
+                            : BorderSize<int>();
                 
                 insets.setLeft (jmax (insets.getLeft(), 5));
                 insets.setRight (jmax (insets.getRight(), 5));
