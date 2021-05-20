@@ -109,12 +109,14 @@ public:
 
     BorderSize<int> getBorderSize   (::Window) const;
     Rectangle<int>  getWindowBounds (::Window, ::Window parentWindow);
-    Point<int> getParentScreenPosition() const;
+    Point<int> getPhysicalParentScreenPosition() const;
 
     bool contains (::Window, Point<int> localPos) const;
 
     void setMinimised (::Window, bool shouldBeMinimised) const;
     bool isMinimised  (::Window) const;
+
+    void setMaximised (::Window, bool shouldBeMinimised) const;
 
     void toFront  (::Window, bool makeActive) const;
     void toBehind (::Window, ::Window otherWindow) const;
@@ -161,6 +163,8 @@ public:
 
     ::Display* getDisplay()                    { return display; }
     XWindowSystemUtilities::Atoms& getAtoms()  { return atoms; }
+
+    bool isX11Available() const noexcept       { return xIsAvailable; }
 
     //==============================================================================
     void handleWindowMessage (LinuxComponentPeer*, XEvent&) const;

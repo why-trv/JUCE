@@ -423,9 +423,8 @@ function(_juce_add_au_resource_fork shared_code_target au_target)
             -d "ppc_$ppc" -d "i386_$i386" -d "ppc64_$ppc64" -d "x86_64_$x86_64"
             -I "${secret_au_resource_dir}"
             -I "/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Versions/A/Headers"
-            -I "/Applications/Xcode.app/Contents/Developer/Extras/CoreAudio/AudioUnits/AUPublic/AUBase"
-            -I "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AudioUnit.framework/Headers"
-            -isysroot "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+            -I "${CMAKE_OSX_SYSROOT}/System/Library/Frameworks/AudioUnit.framework/Headers"
+            -isysroot "${CMAKE_OSX_SYSROOT}"
             "${au_rez_sources}"
             -useDF
             -o "${au_rez_output}"
@@ -867,6 +866,11 @@ function(juce_add_binary_data target)
     target_include_directories(${target} INTERFACE ${juce_binary_data_folder})
     target_compile_features(${target} PRIVATE cxx_std_11)
 
+    # This fixes an issue where Xcode is unable to find binary data during archive.
+    if(CMAKE_GENERATOR STREQUAL "Xcode")
+        set_target_properties(${target} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "./")
+    endif()
+
     if(JUCE_ARG_HEADER_NAME STREQUAL "BinaryData.h")
         target_compile_definitions(${target} INTERFACE JUCE_TARGET_HAS_BINARY_DATA=1)
     endif()
@@ -1142,6 +1146,26 @@ function(_juce_configure_bundle source_target dest_target)
         set_target_properties(${dest_target} PROPERTIES
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER
                 $<TARGET_PROPERTY:${source_target},JUCE_BUNDLE_ID>)
+    endif()
+
+    if(CMAKE_GENERATOR STREQUAL "Xcode")
+        get_target_property(product_name ${source_target} JUCE_PRODUCT_NAME)
+
+        set(install_path "$(LOCAL_APPS_DIR)")
+
+        if(juce_kind_string STREQUAL "AUv3 AppExtension")
+            set(install_path "${install_path}/${product_name}.app")
+
+            if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+                set(install_path "${install_path}/PlugIns")
+            else()
+                set(install_path "${install_path}/Contents/PlugIns")
+            endif()
+        endif()
+
+        set_target_properties(${dest_target} PROPERTIES
+            XCODE_ATTRIBUTE_INSTALL_PATH "${install_path}"
+            XCODE_ATTRIBUTE_SKIP_INSTALL "NO")
     endif()
 endfunction()
 
@@ -1805,23 +1829,9 @@ function(_juce_set_fallback_properties target)
     endif()
 
     # AAX category
-    set(aax_category_ints
-        0x00000000
-        0x00000001
-        0x00000002
-        0x00000004
-        0x00000008
-        0x00000010
-        0x00000020
-        0x00000040
-        0x00000080
-        0x00000100
-        0x00000200
-        0x00000400
-        0x00000800
-        0x00001000
-        0x00002000)
 
+    # The order of these strings is important, as the index of each string
+    # will be used to set an appropriate bit in the category bitfield.
     set(aax_category_strings
         ePlugInCategory_None
         ePlugInCategory_EQ
@@ -1849,11 +1859,29 @@ function(_juce_set_fallback_properties target)
 
     # Replace AAX category string with its integral representation
     get_target_property(actual_aax_category ${target} JUCE_AAX_CATEGORY)
-    list(FIND aax_category_strings ${actual_aax_category} aax_index)
 
-    if(aax_index GREATER_EQUAL 0)
-        list(GET aax_category_ints ${aax_index} aax_int_representation)
-        set_target_properties(${target} PROPERTIES JUCE_AAX_CATEGORY ${aax_int_representation})
+    set(aax_category_int "")
+
+    foreach(category_string IN LISTS actual_aax_category)
+        list(FIND aax_category_strings ${category_string} aax_index)
+
+        if(aax_index GREATER_EQUAL 0)
+            if(aax_index EQUAL 0)
+                set(aax_category_bit 0)
+            else()
+                set(aax_category_bit "1 << (${aax_index} - 1)")
+            endif()
+
+            if(aax_category_int STREQUAL "")
+                set(aax_category_int 0)
+            endif()
+
+            math(EXPR aax_category_int "${aax_category_int} | (${aax_category_bit})")
+        endif()
+    endforeach()
+
+    if(NOT aax_category_int STREQUAL "")
+        set_target_properties(${target} PROPERTIES JUCE_AAX_CATEGORY ${aax_category_int})
     endif()
 endfunction()
 
@@ -1883,6 +1911,7 @@ function(_juce_initialise_target target)
         BACKGROUND_BLE_ENABLED          # iOS only
         CUSTOM_XCASSETS_FOLDER          # iOS only
         TARGETED_DEVICE_FAMILY          # iOS only
+        REQUIRES_FULL_SCREEN            # iOS only
         ICON_BIG
         ICON_SMALL
         COMPANY_COPYRIGHT
@@ -1916,7 +1945,6 @@ function(_juce_initialise_target target)
         AU_EXPORT_PREFIX
         AU_SANDBOX_SAFE
         SUPPRESS_AU_PLIST_RESOURCE_USAGE
-        AAX_CATEGORY
         PLUGINHOST_AU                   # Set this true if you want to host AU plugins
         USE_LEGACY_COMPATIBILITY_PLUGIN_CODE
 
@@ -1933,6 +1961,7 @@ function(_juce_initialise_target target)
         HARDENED_RUNTIME_OPTIONS
         APP_SANDBOX_OPTIONS
         DOCUMENT_EXTENSIONS
+        AAX_CATEGORY
         IPHONE_SCREEN_ORIENTATIONS      # iOS only
         IPAD_SCREEN_ORIENTATIONS        # iOS only
         APP_GROUP_IDS)                  # iOS only

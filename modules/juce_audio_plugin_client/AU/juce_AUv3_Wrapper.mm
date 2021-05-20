@@ -914,7 +914,7 @@ public:
    #endif
 
     //==============================================================================
-    void audioProcessorChanged (AudioProcessor* processor) override
+    void audioProcessorChanged (AudioProcessor* processor, const ChangeDetails&) override
     {
         ignoreUnused (processor);
 
@@ -1933,7 +1933,11 @@ private:
 - (void) loadView                { cpp->loadView(); }
 - (AUAudioUnit *) createAudioUnitWithComponentDescription: (AudioComponentDescription) desc error: (NSError **) error { return cpp->createAudioUnit (desc, error); }
 - (CGSize) preferredContentSize  { return cpp->getPreferredContentSize(); }
+
+// NSViewController and UIViewController have slightly different names for this function
 - (void) viewDidLayoutSubviews   { cpp->viewDidLayoutSubviews(); }
+- (void) viewDidLayout           { cpp->viewDidLayoutSubviews(); }
+
 - (void) didReceiveMemoryWarning { cpp->didReceiveMemoryWarning(); }
 #if JUCE_IOS
 - (void) viewDidAppear: (BOOL) animated { cpp->viewDidAppear (animated); [super viewDidAppear:animated]; }

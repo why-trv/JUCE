@@ -122,26 +122,15 @@ provisioning profiles, which is achieved by passing the `-allowProvisioningUpdat
 #### Archiving for iOS
 
 CMake's out-of-the-box archiving behaviour doesn't always work as expected, especially for targets
-that depend on static libraries (such as targets added with `juce_add_binary_data`). Xcode may
-generate these libraries into a 'DerivedData' directory, but then omit this directory from the
-library search paths later in the build.
+that depend on custom static libraries. Xcode may generate these libraries into a 'DerivedData'
+directory, but then omit this directory from the library search paths later in the build.
 
-If the "Product -> Archive" action isn't working, the following steps may help correct the issue:
+If the "Product -> Archive" action isn't working due to missing staticlibs, try setting the
+`ARCHIVE_OUTPUT_DIRECTORY` property explicitly:
 
-- On your static library, explicitly set the `ARCHIVE_OUTPUT_DIRECTORY` property.
-  ```
-  set_target_properties(my_static_lib_target PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "./")
-  ```
-- Now, the Archive build should complete without linker errors, but the archived product may still
-  be hidden in the Organizer window. To fix this issue, set the following properties on the target
-  representing the actual iOS app. If your target was added with `juce_add_gui_app`, pass the same
-  target name. Otherwise, if your target was added with `juce_add_plugin` you may need to append
-  `_Standalone` to the target name, to specify the standalone plugin target.
-  ```
-  set_target_properties(my_ios_app_target PROPERTIES
-      XCODE_ATTRIBUTE_INSTALL_PATH "$(LOCAL_APPS_DIR)"
-      XCODE_ATTRIBUTE_SKIP_INSTALL "NO")
-  ```
+    set_target_properties(my_static_lib_target PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "./")
+
+Note that the static library produced by `juce_add_binary_data` automatically sets this property.
 
 ### Building universal binaries for macOS
 
@@ -497,7 +486,7 @@ attributes directly to these creation functions, rather than adding them later.
     in GarageBand.
 
 - `AAX_CATEGORY`
-  - Should be one of: `AAX_ePlugInCategory_None`, `AAX_ePlugInCategory_EQ`,
+  - Should be one or more of: `AAX_ePlugInCategory_None`, `AAX_ePlugInCategory_EQ`,
     `AAX_ePlugInCategory_Dynamics`, `AAX_ePlugInCategory_PitchShift`, `AAX_ePlugInCategory_Reverb`,
     `AAX_ePlugInCategory_Delay`, `AAX_ePlugInCategory_Modulation`, `AAX_ePlugInCategory_Harmonic`,
     `AAX_ePlugInCategory_NoiseReduction`, `AAX_ePlugInCategory_Dither`,
