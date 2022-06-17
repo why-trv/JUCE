@@ -24,7 +24,7 @@ namespace juce
 {
 
 //==============================================================================
-#if JUCE_WINDOWS && ! DOXYGEN
+#if JUCE_WINDOWS && ! defined (DOXYGEN)
  #define JUCE_NATIVE_WCHAR_IS_UTF8      0
  #define JUCE_NATIVE_WCHAR_IS_UTF16     1
  #define JUCE_NATIVE_WCHAR_IS_UTF32     0
@@ -60,7 +60,7 @@ namespace juce
  #define T(stringLiteral)   JUCE_T(stringLiteral)
 #endif
 
-#if ! DOXYGEN
+#ifndef DOXYGEN
 
 //==============================================================================
 // GNU libstdc++ does not have std::make_unsigned
@@ -490,6 +490,9 @@ public:
     template <typename ResultType>
     struct HexParser
     {
+        static_assert (std::is_unsigned<ResultType>::value, "ResultType must be unsigned because "
+                                                            "left-shifting a negative value is UB");
+
         template <typename CharPointerType>
         static ResultType parse (CharPointerType t) noexcept
         {
@@ -500,7 +503,7 @@ public:
                 auto hexValue = CharacterFunctions::getHexDigitValue (t.getAndAdvance());
 
                 if (hexValue >= 0)
-                    result = (result << 4) | hexValue;
+                    result = static_cast<ResultType> (result << 4) | static_cast<ResultType> (hexValue);
             }
 
             return result;
@@ -794,6 +797,19 @@ public:
         return -1;
     }
 
+    /** Increments a pointer until it points to the first non-whitespace character
+        in a string.
+
+        If the string contains only whitespace, the pointer will point to the
+        string's null terminator.
+    */
+    template <typename Type>
+    static void incrementToEndOfWhitespace (Type& text) noexcept
+    {
+        while (text.isWhitespace())
+            ++text;
+    }
+
     /** Returns a pointer to the first non-whitespace character in a string.
         If the string contains only whitespace, this will return a pointer
         to its null terminator.
@@ -801,9 +817,7 @@ public:
     template <typename Type>
     static Type findEndOfWhitespace (Type text) noexcept
     {
-        while (text.isWhitespace())
-            ++text;
-
+        incrementToEndOfWhitespace (text);
         return text;
     }
 

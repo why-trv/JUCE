@@ -26,6 +26,10 @@
 namespace juce
 {
 
+#if ! defined (__IPHONE_10_0) || __IPHONE_OS_VERSION_MAX_ALLOWED < __IPHONE_10_0
+ using UIActivityType = NSString*;
+#endif
+
 class ContentSharer::ContentSharerNativeImpl    : public ContentSharer::Pimpl,
                                                   private Component
 {
@@ -34,9 +38,7 @@ public:
         : owner (cs)
     {
         static PopoverDelegateClass cls;
-        JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wobjc-method-access")
-        popoverDelegate.reset ([cls.createInstance() initWithContentSharerNativeImpl:this]);
-        JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+        popoverDelegate.reset ([cls.createInstance() init]);
     }
 
     ~ContentSharerNativeImpl() override
@@ -112,19 +114,12 @@ private:
             ignoreUnused (type);
             ignoreUnused (returnedItems);
 
-            // In some odd cases (e.g. with 'Save to Files' activity, but only if it's dismissed
-            // by tapping Cancel and not outside the modal window), completionWithItemsHandler
-            // may be called twice: when an activity is cancelled and when the
-            // UIActivityViewController itself is dismissed. We must make sure exitModalState()
-            // doesn't get called twice - checking presentingViewController seems to do the trick.
-            if (controller.get().presentingViewController == nil) {
-                succeeded = completed;
+            succeeded = completed;
 
-                if (error != nil)
-                    errorDescription = nsStringToJuce ([error localizedDescription]);
+            if (error != nil)
+                errorDescription = nsStringToJuce ([error localizedDescription]);
 
-                exitModalState (0);
-            }
+            exitModalState (0);
         };
 
         controller.get().modalTransitionStyle = UIModalTransitionStyleCoverVertical;
@@ -133,13 +128,8 @@ private:
         setBounds (bounds);
 
         setAlwaysOnTop (true);
-
-        if (owner.parentComponent != nullptr) {
-            owner.parentComponent->addAndMakeVisible (this);
-        } else {
-            setVisible (true);
-            addToDesktop (0);
-        }
+        setVisible (true);
+        addToDesktop (0);
 
         enterModalState (true,
                          ModalCallbackFunction::create ([this] (int)
@@ -165,9 +155,13 @@ private:
 
             if (isIPad())
             {
+                controller.get().preferredContentSize = peer->view.frame.size;
+
+                auto screenBounds = [UIScreen mainScreen].bounds;
+
                 auto* popoverController = controller.get().popoverPresentationController;
                 popoverController.sourceView = peer->view;
-                popoverController.sourceRect = getPopoverSourceRect();
+                popoverController.sourceRect = CGRectMake (0.f, screenBounds.size.height - 10.f, screenBounds.size.width, 10.f);
                 popoverController.canOverlapSourceViewRect = YES;
                 popoverController.delegate = popoverDelegate.get();
             }
@@ -177,48 +171,32 @@ private:
         }
     }
 
-    CGRect getPopoverSourceRect() {
-        auto bounds = peer->view.bounds;
-
-        return owner.sourceComponent == nullptr
-               ? CGRectMake (0.f, bounds.size.height - 10.f, bounds.size.width, 10.f)
-               : makeCGRect (peer->getAreaCoveredBy (*owner.sourceComponent.getComponent()));
-    }
-
     //==============================================================================
     struct PopoverDelegateClass    : public ObjCClass<NSObject<UIPopoverPresentationControllerDelegate>>
     {
-        PopoverDelegateClass() : ObjCClass<NSObject<UIPopoverPresentationControllerDelegate>> ("PopoverDelegateClass_")
+        PopoverDelegateClass()  : ObjCClass<NSObject<UIPopoverPresentationControllerDelegate>> ("PopoverDelegateClass_")
         {
-            addIvar<ContentSharer::ContentSharerNativeImpl*>("nativeSharer");
-
-            JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wundeclared-selector")
-            addMethod (@selector (initWithContentSharerNativeImpl:), initWithContentSharerNativeImpl, "@@:^v");
-            JUCE_END_IGNORE_WARNINGS_GCC_LIKE
-
-            addMethod (@selector (popoverPresentationController:willRepositionPopoverToRect:inView:), willRepositionPopover, "v@:@@@");
+            addMethod (@selector (popoverPresentationController:willRepositionPopoverToRect:inView:), willRepositionPopover);
 
             registerClass();
         }
 
-        static id initWithContentSharerNativeImpl (id _self, SEL, ContentSharer::ContentSharerNativeImpl* nativeSharer)
-        {
-            NSObject* self = sendSuperclassMessage<NSObject*> (_self, @selector (init));
-            object_setInstanceVariable (self, "nativeSharer", nativeSharer);
-            return self;
-        }
-
         //==============================================================================
-        static void willRepositionPopover (id self, SEL, UIPopoverPresentationController*, CGRect* rect, UIView*)
+        static void willRepositionPopover (id, SEL, UIPopoverPresentationController*, CGRect* rect, UIView*)
         {
-            *rect = getIvar<ContentSharer::ContentSharerNativeImpl*> (self, "nativeSharer")->getPopoverSourceRect();
+            auto screenBounds = [UIScreen mainScreen].bounds;
+
+            rect->origin.x = 0.f;
+            rect->origin.y = screenBounds.size.height - 10.f;
+            rect->size.width = screenBounds.size.width;
+            rect->size.height = 10.f;
         }
     };
 
     ContentSharer& owner;
     UIViewComponentPeer* peer = nullptr;
-    std::unique_ptr<UIActivityViewController, NSObjectDeleter> controller;
-    std::unique_ptr<NSObject<UIPopoverPresentationControllerDelegate>, NSObjectDeleter> popoverDelegate;
+    NSUniquePtr<UIActivityViewController> controller;
+    NSUniquePtr<NSObject<UIPopoverPresentationControllerDelegate>> popoverDelegate;
 
     bool succeeded = false;
     String errorDescription;

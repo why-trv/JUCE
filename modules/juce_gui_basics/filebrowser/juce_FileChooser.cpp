@@ -27,7 +27,8 @@ namespace juce
 {
 
 //==============================================================================
-class FileChooser::NonNative    : public FileChooser::Pimpl
+class FileChooser::NonNative    : public std::enable_shared_from_this<NonNative>,
+                                  public FileChooser::Pimpl
 {
 public:
     NonNative (FileChooser& fileChooser, int flags, FilePreviewComponent* preview)
@@ -50,7 +51,15 @@ public:
     void launch() override
     {
         dialogBox.centreWithDefaultSize (nullptr);
-        dialogBox.enterModalState (true, ModalCallbackFunction::create ([this] (int r) { modalStateFinished (r); }), true);
+
+        const std::weak_ptr<NonNative> ref (shared_from_this());
+        auto* callback = ModalCallbackFunction::create ([ref] (int r)
+        {
+            if (auto locked = ref.lock())
+                locked->modalStateFinished (r);
+        });
+
+        dialogBox.enterModalState (true, callback, true);
     }
 
     void runModally() override
@@ -158,7 +167,7 @@ bool FileChooser::showDialog (const int flags, FilePreviewComponent* const previ
 {
     FocusRestorer focusRestorer;
 
-    pimpl.reset (createPimpl (flags, previewComp));
+    pimpl = createPimpl (flags, previewComp);
     pimpl->runModally();
 
     // ensure that the finished function was invoked
@@ -179,12 +188,11 @@ void FileChooser::launchAsync (int flags, std::function<void (const FileChooser&
 
     asyncCallback = std::move (callback);
 
-    pimpl.reset (createPimpl (flags, previewComp));
+    pimpl = createPimpl (flags, previewComp);
     pimpl->launch();
 }
 
-
-FileChooser::Pimpl* FileChooser::createPimpl (int flags, FilePreviewComponent* previewComp)
+std::shared_ptr<FileChooser::Pimpl> FileChooser::createPimpl (int flags, FilePreviewComponent* previewComp)
 {
     results.clear();
 
@@ -214,10 +222,8 @@ FileChooser::Pimpl* FileChooser::createPimpl (int flags, FilePreviewComponent* p
     {
         return showPlatformDialog (*this, flags, previewComp);
     }
-    else
-    {
-        return new NonNative (*this, flags, previewComp);
-    }
+
+    return std::make_unique<NonNative> (*this, flags, previewComp);
 }
 
 Array<File> FileChooser::getResults() const noexcept

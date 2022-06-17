@@ -49,8 +49,8 @@ namespace XWindowSystemUtilities
     */
     struct GetXProperty
     {
-        GetXProperty (::Window windowH, Atom property, long offset,
-                      long length, bool shouldDelete, Atom requestedType);
+        GetXProperty (::Display* display, ::Window windowH, Atom property,
+                      long offset, long length, bool shouldDelete, Atom requestedType);
         ~GetXProperty();
 
         bool success = false;
@@ -90,6 +90,79 @@ namespace XWindowSystemUtilities
              XdndTypeList, XdndActionList, XdndActionDescription, XdndActionCopy, XdndActionPrivate,
              XembedMsgType, XembedInfo, allowedActions[5], allowedMimeTypes[4], utf8String, clipboard, targets;
     };
+
+    //==============================================================================
+    /** Represents a setting according to the XSETTINGS specification.
+
+        @tags{GUI}
+    */
+    struct XSetting
+    {
+        enum class Type
+        {
+            integer,
+            string,
+            colour,
+            invalid
+        };
+
+        XSetting() = default;
+
+        XSetting (const String& n, int v)            : name (n), type (Type::integer), integerValue (v)  {}
+        XSetting (const String& n, const String& v)  : name (n), type (Type::string),  stringValue (v)   {}
+        XSetting (const String& n, const Colour& v)  : name (n), type (Type::colour),  colourValue (v)   {}
+
+        bool isValid() const noexcept  { return type != Type::invalid; }
+
+        String name;
+        Type type = Type::invalid;
+
+        int integerValue = -1;
+        String stringValue;
+        Colour colourValue;
+    };
+
+    /** Parses and stores the X11 settings for a display according to the XSETTINGS
+        specification.
+
+        @tags{GUI}
+    */
+    class XSettings
+    {
+    public:
+        static std::unique_ptr<XSettings> createXSettings (::Display*);
+
+        //==============================================================================
+        void update();
+        ::Window getSettingsWindow() const noexcept  { return settingsWindow; }
+
+        XSetting getSetting (const String& settingName) const;
+
+        //==============================================================================
+        struct Listener
+        {
+            virtual ~Listener() = default;
+            virtual void settingChanged (const XSetting& settingThatHasChanged) = 0;
+        };
+
+        void addListener (Listener* listenerToAdd)        { listeners.add (listenerToAdd); }
+        void removeListener (Listener* listenerToRemove)  { listeners.remove (listenerToRemove); }
+
+    private:
+        ::Display* display = nullptr;
+        ::Window settingsWindow = None;
+        Atom settingsAtom;
+
+        int lastUpdateSerial = -1;
+
+        std::unordered_map<String, XSetting> settings;
+        ListenerList<Listener> listeners;
+
+        XSettings (::Display*, Atom, ::Window);
+
+        //==============================================================================
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (XSettings)
+    };
 }
 
 //==============================================================================
@@ -106,15 +179,18 @@ public:
     void setIcon (::Window , const Image&) const;
     void setVisible (::Window, bool shouldBeVisible) const;
     void setBounds (::Window, Rectangle<int>, bool fullScreen) const;
+    void updateConstraints (::Window) const;
 
-    BorderSize<int> getBorderSize   (::Window) const;
-    Rectangle<int>  getWindowBounds (::Window, ::Window parentWindow);
-    Point<int> getParentScreenPosition() const;
+    ComponentPeer::OptionalBorderSize getBorderSize (::Window) const;
+    Rectangle<int> getWindowBounds (::Window, ::Window parentWindow);
+    Point<int> getPhysicalParentScreenPosition() const;
 
     bool contains (::Window, Point<int> localPos) const;
 
     void setMinimised (::Window, bool shouldBeMinimised) const;
     bool isMinimised  (::Window) const;
+
+    void setMaximised (::Window, bool shouldBeMinimised) const;
 
     void toFront  (::Window, bool makeActive) const;
     void toBehind (::Window, ::Window otherWindow) const;
@@ -124,6 +200,7 @@ public:
 
     bool canUseSemiTransparentWindows() const;
     bool canUseARGBImages() const;
+    bool isDarkModeActive() const;
 
     int getNumPaintsPendingForWindow (::Window);
     void processPendingPaintsForWindow (::Window);
@@ -138,10 +215,10 @@ public:
     Point<float> getCurrentMousePosition() const;
     void setMousePosition (Point<float> pos) const;
 
-    void* createCustomMouseCursorInfo (const Image&, Point<int> hotspot) const;
-    void deleteMouseCursor (void* cursorHandle) const;
-    void* createStandardMouseCursor (MouseCursor::StandardCursorType) const;
-    void showCursor (::Window, void* cursorHandle) const;
+    Cursor createCustomMouseCursorInfo (const Image&, Point<int> hotspot) const;
+    void deleteMouseCursor (Cursor cursorHandle) const;
+    Cursor createStandardMouseCursor (MouseCursor::StandardCursorType) const;
+    void showCursor (::Window, Cursor cursorHandle) const;
 
     bool isKeyCurrentlyDown (int keyCode) const;
     ModifierKeys getNativeRealtimeModifiers() const;
@@ -156,11 +233,16 @@ public:
 
     void copyTextToClipboard (const String&);
     String getTextFromClipboard() const;
+    String getLocalClipboardContent() const noexcept  { return localClipboardContent; }
 
-    String getLocalClipboardContent() const    { return localClipboardContent; }
+    ::Display* getDisplay() const noexcept                            { return display; }
+    const XWindowSystemUtilities::Atoms& getAtoms() const noexcept    { return atoms; }
+    XWindowSystemUtilities::XSettings* getXSettings() const noexcept  { return xSettings.get(); }
 
-    ::Display* getDisplay()                    { return display; }
-    XWindowSystemUtilities::Atoms& getAtoms()  { return atoms; }
+    bool isX11Available() const noexcept  { return xIsAvailable; }
+
+    static String getWindowScalingFactorSettingName()  { return "Gdk/WindowScalingFactor"; }
+    static String getThemeNameSettingName()            { return "Net/ThemeName"; }
 
     //==============================================================================
     void handleWindowMessage (LinuxComponentPeer*, XEvent&) const;
@@ -213,6 +295,8 @@ private:
 
     long getUserTime (::Window) const;
 
+    void initialiseXSettings();
+
     //==============================================================================
     void handleKeyPressEvent        (LinuxComponentPeer*, XKeyEvent&) const;
     void handleKeyReleaseEvent      (LinuxComponentPeer*, const XKeyEvent&) const;
@@ -235,6 +319,9 @@ private:
 
     void dismissBlockingModals      (LinuxComponentPeer*) const;
     void dismissBlockingModals      (LinuxComponentPeer*, const XConfigureEvent&) const;
+    void updateConstraints          (::Window, ComponentPeer&) const;
+
+    ::Window findTopLevelWindowOf (::Window) const;
 
     static void windowMessageReceive (XEvent&);
 
@@ -244,6 +331,7 @@ private:
     XWindowSystemUtilities::Atoms atoms;
     ::Display* display = nullptr;
     std::unique_ptr<DisplayVisuals> displayVisuals;
+    std::unique_ptr<XWindowSystemUtilities::XSettings> xSettings;
 
    #if JUCE_USE_XSHM
     std::map<::Window, int> shmPaintsPendingMap;
