@@ -2,7 +2,7 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2022 - Raw Material Software Limited
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
@@ -662,7 +662,7 @@ private:
     {
         using ElementType = std::remove_pointer_t<decltype (DataFormat::data)>;
         using ChannelType = std::conditional_t<IsConst, const ElementType*, ElementType*>;
-        using DataType = std::conditional_t<IsInterleaved, ChannelType, ChannelType*>;
+        using DataType = std::conditional_t<IsInterleaved, ChannelType, ChannelType const*>;
         using PointerType = Pointer<DataFormat,
                                     Endianness,
                                     std::conditional_t<IsInterleaved, Interleaved, NonInterleaved>,

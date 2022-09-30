@@ -2,15 +2,15 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2022 - Raw Material Software Limited
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
 
-   By using JUCE, you agree to the terms of both the JUCE 6 End-User License
-   Agreement and JUCE Privacy Policy (both effective as of the 16th June 2020).
+   By using JUCE, you agree to the terms of both the JUCE 7 End-User License
+   Agreement and JUCE Privacy Policy.
 
-   End User License Agreement: www.juce.com/juce-6-licence
+   End User License Agreement: www.juce.com/juce-7-licence
    Privacy Policy: www.juce.com/juce-privacy-policy
 
    Or: You may also use this code under the terms of the GPL v3 (see
@@ -155,11 +155,13 @@ void sendAccessibilityPropertyChangedEvent (const AccessibilityHandler& handler,
 
 void notifyAccessibilityEventInternal (const AccessibilityHandler& handler, InternalAccessibilityEvent eventType)
 {
+    using namespace ComTypes::Constants;
+
     if (eventType == InternalAccessibilityEvent::elementCreated
         || eventType == InternalAccessibilityEvent::elementDestroyed)
     {
         if (auto* parent = handler.getParent())
-            sendAccessibilityAutomationEvent (*parent, ComTypes::UIA_LayoutInvalidatedEventId);
+            sendAccessibilityAutomationEvent (*parent, UIA_LayoutInvalidatedEventId);
 
         return;
     }
@@ -176,9 +178,9 @@ void notifyAccessibilityEventInternal (const AccessibilityHandler& handler, Inte
     {
         switch (eventType)
         {
-            case InternalAccessibilityEvent::focusChanged:           return ComTypes::UIA_AutomationFocusChangedEventId;
-            case InternalAccessibilityEvent::windowOpened:           return ComTypes::UIA_Window_WindowOpenedEventId;
-            case InternalAccessibilityEvent::windowClosed:           return ComTypes::UIA_Window_WindowClosedEventId;
+            case InternalAccessibilityEvent::focusChanged:           return UIA_AutomationFocusChangedEventId;
+            case InternalAccessibilityEvent::windowOpened:           return UIA_Window_WindowOpenedEventId;
+            case InternalAccessibilityEvent::windowClosed:           return UIA_Window_WindowClosedEventId;
             case InternalAccessibilityEvent::elementCreated:
             case InternalAccessibilityEvent::elementDestroyed:
             case InternalAccessibilityEvent::elementMovedOrResized:  break;
@@ -206,10 +208,14 @@ void AccessibilityHandler::notifyAccessibilityEvent (AccessibilityEvent eventTyp
     {
         if (auto* valueInterface = getValueInterface())
         {
-            VARIANT newValue;
-            VariantHelpers::setString (valueInterface->getCurrentValueAsString(), &newValue);
+            const auto propertyType = getRole() == AccessibilityRole::slider ? UIA_RangeValueValuePropertyId
+                                                                             : UIA_ValueValuePropertyId;
 
-            sendAccessibilityPropertyChangedEvent (*this, UIA_ValueValuePropertyId, newValue);
+            const auto value = getRole() == AccessibilityRole::slider
+                               ? VariantHelpers::getWithValue (valueInterface->getCurrentValue())
+                               : VariantHelpers::getWithValue (valueInterface->getCurrentValueAsString());
+
+            sendAccessibilityPropertyChangedEvent (*this, propertyType, value);
         }
 
         return;
@@ -217,12 +223,14 @@ void AccessibilityHandler::notifyAccessibilityEvent (AccessibilityEvent eventTyp
 
     auto event = [eventType]() -> EVENTID
     {
+        using namespace ComTypes::Constants;
+
         switch (eventType)
         {
-            case AccessibilityEvent::textSelectionChanged:  return ComTypes::UIA_Text_TextSelectionChangedEventId;
-            case AccessibilityEvent::textChanged:           return ComTypes::UIA_Text_TextChangedEventId;
-            case AccessibilityEvent::structureChanged:      return ComTypes::UIA_StructureChangedEventId;
-            case AccessibilityEvent::rowSelectionChanged:   return ComTypes::UIA_SelectionItem_ElementSelectedEventId;
+            case AccessibilityEvent::textSelectionChanged:  return UIA_Text_TextSelectionChangedEventId;
+            case AccessibilityEvent::textChanged:           return UIA_Text_TextChangedEventId;
+            case AccessibilityEvent::structureChanged:      return UIA_StructureChangedEventId;
+            case AccessibilityEvent::rowSelectionChanged:   return UIA_SelectionItem_ElementSelectedEventId;
             case AccessibilityEvent::titleChanged:
             case AccessibilityEvent::valueChanged:          break;
         }
@@ -284,12 +292,12 @@ void AccessibilityHandler::postAnnouncement (const String& announcementString, A
 //==============================================================================
 namespace WindowsAccessibility
 {
-    long getUiaRootObjectId()
+    static long getUiaRootObjectId()
     {
         return static_cast<long> (UiaRootObjectId);
     }
 
-    bool handleWmGetObject (AccessibilityHandler* handler, WPARAM wParam, LPARAM lParam, LRESULT* res)
+    static bool handleWmGetObject (AccessibilityHandler* handler, WPARAM wParam, LPARAM lParam, LRESULT* res)
     {
         if (isStartingUpOrShuttingDown() || (handler == nullptr || ! isHandlerValid (*handler)))
             return false;
@@ -308,7 +316,7 @@ namespace WindowsAccessibility
         return false;
     }
 
-    void revokeUIAMapEntriesForWindow (HWND hwnd)
+    static void revokeUIAMapEntriesForWindow (HWND hwnd)
     {
         if (auto* uiaWrapper = WindowsUIAWrapper::getInstanceWithoutCreating())
             uiaWrapper->returnRawElementProvider (hwnd, 0, 0, nullptr);

@@ -2,7 +2,7 @@
   ==============================================================================
 
    This file is part of the JUCE examples.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2022 - Raw Material Software Limited
 
    The code included in this file is provided under the terms of the ISC license
    http://www.isc.org/downloads/software-support-policy/isc-license. Permission
@@ -31,7 +31,7 @@
 
  dependencies:     juce_core, juce_data_structures, juce_events, juce_graphics,
                    juce_gui_basics, juce_gui_extra, juce_opengl
- exporters:        xcode_mac, vs2019, linux_make, androidstudio, xcode_iphone
+ exporters:        xcode_mac, vs2022, linux_make, androidstudio, xcode_iphone
 
  moduleFlags:      JUCE_STRICT_REFCOUNTEDPOINTER=1
 
@@ -893,10 +893,10 @@ public:
     {
         const ScopedLock lock (mutex);
 
-        auto viewMatrix = draggableOrientation.getRotationMatrix() * Vector3D<float> (0.0f, 1.0f, -10.0f);
+        auto viewMatrix = Matrix3D<float>::fromTranslation ({ 0.0f, 1.0f, -10.0f }) * draggableOrientation.getRotationMatrix();
         auto rotationMatrix = Matrix3D<float>::rotation ({ rotation, rotation, -0.3f });
 
-        return rotationMatrix * viewMatrix;
+        return viewMatrix * rotationMatrix;
     }
 
     void setTexture (OpenGLUtils::DemoTexture* t)

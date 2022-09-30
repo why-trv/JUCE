@@ -331,12 +331,14 @@ attributes directly to these creation functions, rather than adding them later.
 
 `LAUNCH_STORYBOARD_FILE`
 - A custom launch storyboard file to use on iOS. If not supplied, a default storyboard will be
-  used.
+  used. If this is specified, then this will take precedence over a LaunchImage inside a custom
+  xcassets directory.
 
 `CUSTOM_XCASSETS_FOLDER`
 - A path to an xcassets directory, containing icons and/or launch images for this target. If this
-  is specified, the ICON_BIG and ICON_SMALL arguments will not have an effect on iOS, and a launch
-  storyboard will not be used.
+  is specified, the ICON_BIG and ICON_SMALL arguments will not have an effect on iOS. LaunchImages
+  have been deprecated from iOS 13 onward, but if your xcassets folder contains a LaunchImage and
+  a custom storyboard hasn't been specified, then it will be used.
 
 `TARGETED_DEVICE_FAMILY`
 - Specifies the device families on which the product must be capable of running. Allowed values
@@ -544,7 +546,7 @@ attributes directly to these creation functions, rather than adding them later.
   `AAX_ePlugInCategory_NoiseReduction`, `AAX_ePlugInCategory_Dither`,
   `AAX_ePlugInCategory_SoundField`, `AAX_ePlugInCategory_HWGenerators`,
   `AAX_ePlugInCategory_SWGenerators`, `AAX_ePlugInCategory_WrappedPlugin`,
-  `AAX_ePlugInCategory_Effect`
+  `AAX_EPlugInCategory_Effect`
 
 `PLUGINHOST_AU`
 - May be either TRUE or FALSE (defaults to FALSE). If TRUE, will add the preprocessor definition
@@ -598,6 +600,40 @@ attributes directly to these creation functions, rather than adding them later.
   adding the plugin targets, rather than setting this argument on each individual target.
   Unlike the other `COPY_DIR` arguments, this argument does not have a default value so be sure
   to set it if you have enabled `COPY_PLUGIN_AFTER_BUILD` and the `Unity` format.
+
+`IS_ARA_EFFECT`
+- May be either TRUE or FALSE (defaults to FALSE). If TRUE it enables additional codepaths in the
+  VST3 and AU plugin wrappers allowing compatible hosts to load the plugin with additional ARA
+  functionality. It will also add the preprocessor definition `JucePlugin_Enable_ARA=1`, which can
+  be used in preprocessor conditions inside the plugin code. You should not add this definition
+  using `target_compile_definitions` manually.
+
+`ARA_FACTORY_ID`
+- A globally unique and versioned identifier string. If not provided a sensible default will be
+  generated using the `BUNDLE_ID` and `VERSION` values. The version must be updated if e.g. the
+  plugin's (compatible) document archive ID(s) or its analysis or playback transformation
+  capabilities change.
+
+`ARA_DOCUMENT_ARCHIVE_ID`
+- Identifier string for document archives created by the document controller. This ID must be
+  globally unique and is shared only amongst document controllers that create the same archives and
+  produce the same render results based upon the same input data. This means that the ID must be
+  updated if the archive format changes in any way that is no longer downwards compatible. If not
+  provided a version independent default will be created that is only appropriate as long as the
+  format remains unchanged.
+
+`ARA_ANALYSIS_TYPES`
+- Defaults to having no analyzable types. Should be one or more of the following values if the
+  document controller has the corresponding analysis capability: `kARAContentTypeNotes`,
+  `kARAContentTypeTempoEntries`, `kARAContentTypeBarSignatures`, `kARAContentTypeStaticTuning `,
+  `kARAContentTypeKeySignatures`, `kARAContentTypeSheetChords`
+
+`ARA_TRANSFORMATION_FLAGS`
+- Defaults to `kARAPlaybackTransformationNoChanges`. If the document controller has the ability to
+  provide the corresponding change it should be one or more of:
+  `kARAPlaybackTransformationTimestretch`, `kARAPlaybackTransformationTimestretchReflectingTempo`,
+  `kARAPlaybackTransformationContentBasedFadeAtTail`,
+  `kARAPlaybackTransformationContentBasedFadeAtHead`
 
 #### `juce_add_binary_data`
 
@@ -664,10 +700,11 @@ target!).
     juce_set_aax_sdk_path(<absolute path>)
     juce_set_vst2_sdk_path(<absolute path>)
     juce_set_vst3_sdk_path(<absolute path>)
+    juce_set_ara_sdk_path(<absolute path>)
 
-Call these functions from your CMakeLists to set up your local AAX, VST2, and VST3 SDKs. These
-functions should be called *before* adding any targets that may depend on the AAX/VST2/VST3 SDKs
-(plugin hosts, AAX/VST2/VST3 plugins etc.).
+Call these functions from your CMakeLists to set up your local AAX, VST2, VST3 and ARA SDKs. These
+functions should be called *before* adding any targets that may depend on the AAX/VST2/VST3/ARA SDKs
+(plugin hosts, AAX/VST2/VST3/ARA plugins etc.).
 
 #### `juce_add_module`
 

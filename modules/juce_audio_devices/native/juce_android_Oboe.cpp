@@ -2,7 +2,7 @@
   ==============================================================================
 
    This file is part of the JUCE library.
-   Copyright (c) 2020 - Raw Material Software Limited
+   Copyright (c) 2022 - Raw Material Software Limited
 
    JUCE is an open source library subject to commercial or open-source
    licensing.
@@ -423,13 +423,17 @@ private:
         }
     }
 
-    void process (const float** inputChannelData, int numInputChannels,
-                  float** outputChannelData, int numOutputChannels, int32_t numFrames)
+    void process (const float* const* inputChannelData, int numInputChannels,
+                  float* const* outputChannelData, int numOutputChannels, int32_t numFrames)
     {
         if (auto* cb = callback.exchange (nullptr))
         {
-            cb->audioDeviceIOCallback (inputChannelData, numInputChannels,
-                                       outputChannelData, numOutputChannels, numFrames);
+            cb->audioDeviceIOCallbackWithContext (inputChannelData,
+                                                  numInputChannels,
+                                                  outputChannelData,
+                                                  numOutputChannels,
+                                                  numFrames,
+                                                  {});
             callback.set (cb);
         }
         else
@@ -1416,6 +1420,7 @@ private:
 };
 
 //==============================================================================
+pthread_t juce_createRealtimeAudioThread (void* (*entry) (void*), void* userPtr);
 pthread_t juce_createRealtimeAudioThread (void* (*entry) (void*), void* userPtr)
 {
     auto thread = std::make_unique<OboeRealtimeThread>();
