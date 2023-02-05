@@ -66,9 +66,6 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC (4355)
  #ifndef WM_APPCOMMAND
   #define WM_APPCOMMAND 0x0319
  #endif
-
- extern "C" void _fpreset();
- extern "C" void _clearfp();
 #elif ! JUCE_WINDOWS
  static void _fpreset() {}
  static void _clearfp() {}
@@ -707,7 +704,7 @@ struct ModuleHandle    : public ReferenceCountedObject
                 if (auto hGlob = LoadResource (dllModule, res))
                 {
                     auto* data = static_cast<const char*> (LockResource (hGlob));
-                    return String::fromUTF8 (data, SizeofResource (dllModule, res));
+                    return String::fromUTF8 (data, (int) SizeofResource (dllModule, res));
                 }
             }
         }
@@ -837,7 +834,7 @@ public:
     {
         auto& pointers = getPointers (Tag<T>{});
 
-        jassert ((int) pointers.size() < buffer.getNumChannels());
+        jassert (buffer.getNumChannels() <= static_cast<int> (pointers.capacity()));
         pointers.resize (jmax (pointers.size(), (size_t) buffer.getNumChannels()));
 
         std::copy (buffer.getArrayOfWritePointers(),
@@ -3031,10 +3028,8 @@ public:
     }
 
     //==============================================================================
-    void mouseDown (const MouseEvent& e) override
+    void mouseDown ([[maybe_unused]] const MouseEvent& e) override
     {
-        ignoreUnused (e);
-
        #if JUCE_WINDOWS || JUCE_LINUX || JUCE_BSD
         toFront (true);
        #endif
@@ -3139,10 +3134,10 @@ private:
         pluginWantsKeys = (dispatch (Vst2::effKeysRequired, 0, 0, nullptr, 0) == 0);
 
        #if JUCE_WINDOWS
-        originalWndProc = 0;
+        originalWndProc = nullptr;
         auto* pluginHWND = getPluginHWND();
 
-        if (pluginHWND == 0)
+        if (pluginHWND == nullptr)
         {
             isOpen = false;
             setSize (300, 150);
@@ -3182,7 +3177,7 @@ private:
                 {
                     ScopedThreadDPIAwarenessSetter threadDpiAwarenessSetter { pluginHWND };
 
-                    SetWindowPos (pluginHWND, 0,
+                    SetWindowPos (pluginHWND, nullptr,
                                   0, 0, rw, rh,
                                   SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 
@@ -3252,11 +3247,11 @@ private:
             JUCE_BEGIN_IGNORE_WARNINGS_MSVC (4244)
             auto* pluginHWND = getPluginHWND();
 
-            if (originalWndProc != 0 && pluginHWND != 0 && IsWindow (pluginHWND))
+            if (originalWndProc != nullptr && pluginHWND != nullptr && IsWindow (pluginHWND))
                 SetWindowLongPtr (pluginHWND, GWLP_WNDPROC, (LONG_PTR) originalWndProc);
             JUCE_END_IGNORE_WARNINGS_MSVC
 
-            originalWndProc = 0;
+            originalWndProc = nullptr;
            #elif JUCE_LINUX || JUCE_BSD
             pluginWindow = 0;
            #endif
@@ -3445,7 +3440,7 @@ AudioProcessorEditor* VSTPluginInstance::createEditor()
    #endif
 }
 
-bool VSTPluginInstance::updateSizeFromEditor (int w, int h)
+bool VSTPluginInstance::updateSizeFromEditor ([[maybe_unused]] int w, [[maybe_unused]] int h)
 {
    #if ! JUCE_IOS && ! JUCE_ANDROID
     if (auto* editor = dynamic_cast<VSTPluginWindow*> (getActiveEditor()))

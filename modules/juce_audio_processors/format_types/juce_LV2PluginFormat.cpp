@@ -1278,10 +1278,8 @@ private:
                                                   LV2_Options_Option* options,
                                                   LV2_Worker_Schedule* schedule,
                                                   LV2_Resize_Port_Resize* resize,
-                                                  LV2_Log_Log* log)
+                                                  [[maybe_unused]] LV2_Log_Log* log)
     {
-        ignoreUnused (log);
-
         return { LV2_Feature { LV2_STATE__loadDefaultState,         nullptr },
                  LV2_Feature { LV2_BUF_SIZE__boundedBlockLength,    nullptr },
                  LV2_Feature { LV2_URID__map,                       map },
@@ -1841,7 +1839,12 @@ class World
 public:
     World() : world (lilv_world_new()) {}
 
-    void loadAll() { lilv_world_load_all (world.get()); }
+    void loadAllFromPaths (const NodeString& paths)
+    {
+        lilv_world_set_option (world.get(), LILV_OPTION_LV2_PATH, paths.get());
+        lilv_world_load_all (world.get());
+    }
+
     void loadBundle   (const NodeUri& uri)      { lilv_world_load_bundle   (world.get(), uri.get()); }
     void unloadBundle (const NodeUri& uri)      { lilv_world_unload_bundle (world.get(), uri.get()); }
 
@@ -2868,11 +2871,10 @@ private:
 
         ports.forEachPort ([&] (const PortHeader& header)
         {
-            const auto emplaced = result.emplace (header.symbol, header.index);
+            [[maybe_unused]] const auto emplaced = result.emplace (header.symbol, header.index);
 
             // This will complain if there are duplicate port symbols.
             jassert (emplaced.second);
-            ignoreUnused (emplaced);
         });
 
         return result;
@@ -4879,10 +4881,8 @@ private:
                                                              : freeWheelingPort->info.min;
     }
 
-    void pushMessage (MessageHeader header, uint32_t size, const void* data)
+    void pushMessage (MessageHeader header, [[maybe_unused]] uint32_t size, const void* data)
     {
-        ignoreUnused (size);
-
         if (header.protocol == 0 || header.protocol == instance->urids.mLV2_UI__floatProtocol)
         {
             const auto value = readUnaligned<float> (data);
@@ -5189,7 +5189,7 @@ class LV2PluginFormat::Pimpl
 public:
     Pimpl()
     {
-        world->loadAll();
+        loadAllPluginsFromPaths (getDefaultLocationsToSearch());
 
         const auto tempFile = lv2ResourceFolder.getFile();
 
@@ -5252,9 +5252,9 @@ public:
         return findPluginByUri (description.fileOrIdentifier) != nullptr;
     }
 
-    StringArray searchPathsForPlugins (const FileSearchPath&, bool, bool)
+    StringArray searchPathsForPlugins (const FileSearchPath& paths, bool, bool)
     {
-        world->loadAll();
+        loadAllPluginsFromPaths (paths);
 
         StringArray result;
 
@@ -5264,7 +5264,30 @@ public:
         return result;
     }
 
-    FileSearchPath getDefaultLocationsToSearch() { return {}; }
+    FileSearchPath getDefaultLocationsToSearch()
+    {
+      #if JUCE_MAC
+        return { "~/Library/Audio/Plug-Ins/LV2;"
+                 "~/.lv2;"
+                 "/usr/local/lib/lv2;"
+                 "/usr/lib/lv2;"
+                 "/Library/Audio/Plug-Ins/LV2;" };
+      #elif JUCE_WINDOWS
+        return { "%APPDATA%\\LV2;"
+                 "%COMMONPROGRAMFILES%\\LV2" };
+      #else
+       #if JUCE_64BIT
+        if (File ("/usr/lib64/lv2").exists() || File ("/usr/local/lib64/lv2").exists())
+            return { "~/.lv2;"
+                     "/usr/lib64/lv2;"
+                     "/usr/local/lib64/lv2" };
+       #endif
+
+        return { "~/.lv2;"
+                 "/usr/lib/lv2;"
+                 "/usr/local/lib/lv2" };
+      #endif
+    }
 
     const LilvUI* findEmbeddableUi (const lv2_host::Uis* pluginUis, std::true_type)
     {
@@ -5457,6 +5480,12 @@ public:
     }
 
 private:
+    void loadAllPluginsFromPaths (const FileSearchPath& path)
+    {
+        const auto joined = path.toStringWithSeparator (LILV_PATH_SEP);
+        world->loadAllFromPaths (world->newString (joined.toRawUTF8()));
+    }
+
     struct Free { void operator() (char* ptr) const noexcept { free (ptr); } };
     using StringPtr = std::unique_ptr<char, Free>;
 

@@ -263,6 +263,7 @@ namespace juce
 #include "windows/juce_ThreadWithProgressWindow.cpp"
 #include "windows/juce_TooltipWindow.cpp"
 #include "windows/juce_TopLevelWindow.cpp"
+#include "windows/juce_VBlankAttachement.cpp"
 #include "commands/juce_ApplicationCommandInfo.cpp"
 #include "commands/juce_ApplicationCommandManager.cpp"
 #include "commands/juce_ApplicationCommandTarget.cpp"
@@ -327,6 +328,7 @@ namespace juce
 
  JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wzero-as-null-pointer-constant")
 
+ #include "native/x11/juce_linux_ScopedWindowAssociation.h"
  #include "native/juce_linux_Windowing.cpp"
  #include "native/x11/juce_linux_XWindowSystem.cpp"
 
@@ -335,6 +337,28 @@ namespace juce
  #include "native/juce_linux_FileChooser.cpp"
 
 #elif JUCE_ANDROID
+
+namespace juce
+{
+static jobject makeAndroidRect (Rectangle<int> r)
+{
+    return getEnv()->NewObject (AndroidRect,
+                                AndroidRect.constructor,
+                                r.getX(),
+                                r.getY(),
+                                r.getRight(),
+                                r.getBottom());
+}
+
+static jobject makeAndroidPoint (Point<int> p)
+{
+    return getEnv()->NewObject (AndroidPoint,
+                                AndroidPoint.create,
+                                p.getX(),
+                                p.getY());
+}
+} // namespace juce
+
  #include "juce_core/files/juce_common_MimeTypes.h"
  #include "native/accessibility/juce_android_Accessibility.cpp"
  #include "native/juce_android_Windowing.cpp"
