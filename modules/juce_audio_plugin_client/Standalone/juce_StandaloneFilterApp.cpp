@@ -76,7 +76,7 @@ public:
        #endif
 
         return new StandaloneFilterWindow (getApplicationName(),
-                                           LookAndFeel::getDefaultLookAndFeel().findColour (ResizableWindow::backgroundColourId),
+                                           juce::Colour(0xff121212),
                                            appProperties.getUserSettings(),
                                            false, {}, nullptr
                                           #ifdef JucePlugin_PreferredChannelConfigurations
