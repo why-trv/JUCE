@@ -1168,14 +1168,14 @@ public:
 
         Calling this method will also invoke the sendLookAndFeelChange() method.
 
-        @see getLookAndFeel, lookAndFeelChanged
+        @see getLookAndFeel, lookAndFeelChanged, sendLookAndFeelChange
     */
     void setLookAndFeel (LookAndFeel* newLookAndFeel);
 
     /** Called to let the component react to a change in the look-and-feel setting.
 
-        When the look-and-feel is changed for a component, this will be called in
-        all its child components, recursively.
+        When the look-and-feel is changed for a component, this method, repaint(), and
+        colourChanged() are called on the original component and all its children recursively.
 
         It can also be triggered manually by the sendLookAndFeelChange() method, in case
         an application uses a LookAndFeel class that might have changed internally.
@@ -1184,10 +1184,8 @@ public:
     */
     virtual void lookAndFeelChanged();
 
-    /** Calls the lookAndFeelChanged() method in this component and all its children.
-
-        This will recurse through the children and their children, calling lookAndFeelChanged()
-        on them all.
+    /** Calls the methods repaint(), lookAndFeelChanged(), and colourChanged() in this
+        component and all its children recursively.
 
         @see lookAndFeelChanged
     */
@@ -2236,6 +2234,8 @@ public:
         method, which your component can override if it needs to do something when
         colours are altered.
 
+        Note repaint() is not automatically called when a colour is changed.
+
         For more details about colour IDs, see the comments for findColour().
 
         @see findColour, isColourSpecified, colourChanged, LookAndFeel::findColour, LookAndFeel::setColour
@@ -2257,8 +2257,11 @@ public:
     */
     void copyAllExplicitColoursTo (Component& target) const;
 
-    /** This method is called when a colour is changed by the setColour() method.
-        @see setColour, findColour
+    /** This method is called when a colour is changed by the setColour() method,
+        or when the look-and-feel is changed by the setLookAndFeel() or
+        sendLookAndFeelChanged() methods.
+
+        @see setColour, findColour, setLookAndFeel, sendLookAndFeelChanged
     */
     virtual void colourChanged();
 
@@ -2479,6 +2482,9 @@ public:
     /** Returns the accessibility handler for this component, or nullptr if this component is not
         accessible.
 
+        To customise the accessibility handler for a component, override
+        createAccessibilityHandler().
+
         @see setAccessible
     */
     AccessibilityHandler* getAccessibilityHandler();
@@ -2490,6 +2496,30 @@ public:
         createAccessibilityHandler().
     */
     void invalidateAccessibilityHandler();
+
+    //==============================================================================
+    /** Override this method to return a custom AccessibilityHandler for this component.
+
+        The default implementation creates and returns a AccessibilityHandler object with an
+        unspecified role, meaning that it will be visible to accessibility clients but
+        without a specific role, action callbacks or interfaces. To control how accessibility
+        clients see and interact with your component subclass AccessibilityHandler, implement
+        the desired behaviours, and return an instance of it from this method in your
+        component subclass.
+
+        The accessibility handler you return here is guaranteed to be destroyed before
+        its Component, so it's safe to store and use a reference back to the Component
+        inside the AccessibilityHandler if necessary.
+
+        This function should rarely be called directly. If you need to query a component's
+        accessibility handler, it's normally better to call getAccessibilityHandler().
+        The exception to this rule is derived implementations of createAccessibilityHandler(),
+        which may find it useful to call the base class implementation, and then wrap or
+        modify the result.
+
+        @see getAccessibilityHandler
+    */
+    virtual std::unique_ptr<AccessibilityHandler> createAccessibilityHandler();
 
     //==============================================================================
    #ifndef DOXYGEN
@@ -2505,27 +2535,10 @@ public:
    #endif
 
 private:
-    //==============================================================================
-    /** Override this method to return a custom AccessibilityHandler for this component.
-
-        The default implementation creates and returns a AccessibilityHandler object with an
-        unspecified role, meaning that it will be visible to accessibility clients but
-        without a specific role, action callbacks or interfaces. To control how accessibility
-        clients see and interact with your component subclass AccessibilityHandler, implement
-        the desired behaviours, and return an instance of it from this method in your
-        component subclass.
-
-        The accessibility handler you return here is guaranteed to be destroyed before
-        its Component, so it's safe to store and use a reference back to the Component
-        inside the AccessibilityHandler if necessary.
-
-        @see getAccessibilityHandler
-    */
-    virtual std::unique_ptr<AccessibilityHandler> createAccessibilityHandler();
 
     //==============================================================================
     friend class ComponentPeer;
-    friend class MouseInputSourceInternal;
+    friend class detail::MouseInputSourceImpl;
 
    #ifndef DOXYGEN
     static Component* currentlyFocusedComponent;
@@ -2594,9 +2607,9 @@ private:
     //==============================================================================
     void internalMouseEnter (MouseInputSource, Point<float>, Time);
     void internalMouseExit  (MouseInputSource, Point<float>, Time);
-    void internalMouseDown  (MouseInputSource, const PointerState&, Time);
-    void internalMouseUp    (MouseInputSource, const PointerState&, Time, const ModifierKeys oldModifiers);
-    void internalMouseDrag  (MouseInputSource, const PointerState&, Time);
+    void internalMouseDown  (MouseInputSource, const detail::PointerState&, Time);
+    void internalMouseUp    (MouseInputSource, const detail::PointerState&, Time, const ModifierKeys oldModifiers);
+    void internalMouseDrag  (MouseInputSource, const detail::PointerState&, Time);
     void internalMouseMove  (MouseInputSource, Point<float>, Time);
     void internalMouseWheel (MouseInputSource, Point<float>, Time, const MouseWheelDetails&);
     void internalMagnifyGesture (MouseInputSource, Point<float>, Time, float);
@@ -2625,8 +2638,7 @@ private:
     void sendEnablementChangeMessage();
     void sendVisibilityChangeMessage();
 
-    struct ComponentHelpers;
-    friend struct ComponentHelpers;
+    friend struct detail::ComponentHelpers;
 
     /* Components aren't allowed to have copy constructors, as this would mess up parent hierarchies.
        You might need to give your subclasses a private dummy constructor to avoid compiler warnings.

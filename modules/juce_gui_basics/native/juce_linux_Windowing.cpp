@@ -28,7 +28,7 @@ namespace juce
 
 //==============================================================================
 static int numAlwaysOnTopPeers = 0;
-bool juce_areThereAnyAlwaysOnTopWindows()  { return numAlwaysOnTopPeers > 0; }
+bool detail::WindowingHelpers::areThereAnyAlwaysOnTopWindows()  { return numAlwaysOnTopPeers > 0; }
 
 //==============================================================================
 class LinuxComponentPeer  : public ComponentPeer,
@@ -217,7 +217,7 @@ public:
                                         : Desktop::getInstance().getDisplays().getDisplayForRect (bounds)->userArea;
 
             if (! r.isEmpty())
-                setBounds (ScalingHelpers::scaledScreenPosToUnscaled (component, r), shouldBeFullScreen);
+                setBounds (detail::ScalingHelpers::scaledScreenPosToUnscaled (component, r), shouldBeFullScreen);
 
             component.repaint();
         }
@@ -468,7 +468,7 @@ private:
                         // This issue only occurs right after peer creation, when the image is
                         // null. Updating when only the width or height is changed would lead to
                         // incorrect behaviour.
-                        peer.forceSetBounds (ScalingHelpers::scaledScreenPosToUnscaled (peer.component,
+                        peer.forceSetBounds (detail::ScalingHelpers::scaledScreenPosToUnscaled (peer.component,
                                                                                         peer.component.getBoundsInParent()),
                                              peer.isFullScreen());
                     }
@@ -716,7 +716,7 @@ Desktop::DisplayOrientation Desktop::getCurrentOrientation() const  { return upr
 void Desktop::allowedOrientationsChanged()                          {}
 
 //==============================================================================
-bool MouseInputSource::SourceList::addSource()
+bool detail::MouseInputSourceList::addSource()
 {
     if (sources.isEmpty())
     {
@@ -727,7 +727,7 @@ bool MouseInputSource::SourceList::addSource()
     return false;
 }
 
-bool MouseInputSource::SourceList::canUseTouch()
+bool detail::MouseInputSourceList::canUseTouch() const
 {
     return false;
 }
@@ -749,7 +749,7 @@ public:
     explicit PlatformSpecificHandle (const MouseCursor::StandardCursorType type)
         : cursorHandle (makeHandle (type)) {}
 
-    explicit PlatformSpecificHandle (const CustomMouseCursorInfo& info)
+    explicit PlatformSpecificHandle (const detail::CustomMouseCursorInfo& info)
         : cursorHandle (makeHandle (info)) {}
 
     ~PlatformSpecificHandle()
@@ -767,7 +767,7 @@ public:
     }
 
 private:
-    static Cursor makeHandle (const CustomMouseCursorInfo& info)
+    static Cursor makeHandle (const detail::CustomMouseCursorInfo& info)
     {
         const auto image = info.image.getImage();
         return XWindowSystem::getInstance()->createCustomMouseCursorInfo (image.rescaled ((int) (image.getWidth()  / info.image.getScale()),
@@ -852,133 +852,7 @@ void LookAndFeel::playAlertSound()
 }
 
 //==============================================================================
-static int showDialog (const MessageBoxOptions& options,
-                       ModalComponentManager::Callback* callback,
-                       Async async)
-{
-    const auto dummyCallback = [] (int) {};
-
-    switch (options.getNumButtons())
-    {
-        case 2:
-        {
-            if (async == Async::yes && callback == nullptr)
-                callback = ModalCallbackFunction::create (dummyCallback);
-
-            return AlertWindow::showOkCancelBox (options.getIconType(),
-                                                 options.getTitle(),
-                                                 options.getMessage(),
-                                                 options.getButtonText (0),
-                                                 options.getButtonText (1),
-                                                 options.getAssociatedComponent(),
-                                                 callback) ? 1 : 0;
-        }
-
-        case 3:
-        {
-            if (async == Async::yes && callback == nullptr)
-                callback = ModalCallbackFunction::create (dummyCallback);
-
-            return AlertWindow::showYesNoCancelBox (options.getIconType(),
-                                                    options.getTitle(),
-                                                    options.getMessage(),
-                                                    options.getButtonText (0),
-                                                    options.getButtonText (1),
-                                                    options.getButtonText (2),
-                                                    options.getAssociatedComponent(),
-                                                    callback);
-        }
-
-        case 1:
-        default:
-            break;
-    }
-
-   #if JUCE_MODAL_LOOPS_PERMITTED
-    if (async == Async::no)
-    {
-        AlertWindow::showMessageBox (options.getIconType(),
-                                     options.getTitle(),
-                                     options.getMessage(),
-                                     options.getButtonText (0),
-                                     options.getAssociatedComponent());
-    }
-    else
-   #endif
-    {
-        AlertWindow::showMessageBoxAsync (options.getIconType(),
-                                          options.getTitle(),
-                                          options.getMessage(),
-                                          options.getButtonText (0),
-                                          options.getAssociatedComponent(),
-                                          callback);
-    }
-
-    return 0;
-}
-
-#if JUCE_MODAL_LOOPS_PERMITTED
-void JUCE_CALLTYPE NativeMessageBox::showMessageBox (MessageBoxIconType iconType,
-                                                     const String& title, const String& message,
-                                                     Component* /*associatedComponent*/)
-{
-    AlertWindow::showMessageBox (iconType, title, message);
-}
-
-int JUCE_CALLTYPE NativeMessageBox::show (const MessageBoxOptions& options)
-{
-    return showDialog (options, nullptr, Async::no);
-}
-#endif
-
-void JUCE_CALLTYPE NativeMessageBox::showMessageBoxAsync (MessageBoxIconType iconType,
-                                                          const String& title, const String& message,
-                                                          Component* associatedComponent,
-                                                          ModalComponentManager::Callback* callback)
-{
-    AlertWindow::showMessageBoxAsync (iconType, title, message, {}, associatedComponent, callback);
-}
-
-bool JUCE_CALLTYPE NativeMessageBox::showOkCancelBox (MessageBoxIconType iconType,
-                                                      const String& title, const String& message,
-                                                      Component* associatedComponent,
-                                                      ModalComponentManager::Callback* callback)
-{
-    return AlertWindow::showOkCancelBox (iconType, title, message, {}, {}, associatedComponent, callback);
-}
-
-int JUCE_CALLTYPE NativeMessageBox::showYesNoCancelBox (MessageBoxIconType iconType,
-                                                        const String& title, const String& message,
-                                                        Component* associatedComponent,
-                                                        ModalComponentManager::Callback* callback)
-{
-    return AlertWindow::showYesNoCancelBox (iconType, title, message, {}, {}, {},
-                                            associatedComponent, callback);
-}
-
-int JUCE_CALLTYPE NativeMessageBox::showYesNoBox (MessageBoxIconType iconType,
-                                                  const String& title, const String& message,
-                                                  Component* associatedComponent,
-                                                  ModalComponentManager::Callback* callback)
-{
-    return AlertWindow::showOkCancelBox (iconType, title, message, TRANS("Yes"), TRANS("No"),
-                                         associatedComponent, callback);
-}
-
-void JUCE_CALLTYPE NativeMessageBox::showAsync (const MessageBoxOptions& options,
-                                                ModalComponentManager::Callback* callback)
-{
-    showDialog (options, callback, Async::yes);
-}
-
-void JUCE_CALLTYPE NativeMessageBox::showAsync (const MessageBoxOptions& options,
-                                                std::function<void (int)> callback)
-{
-    showAsync (options, ModalCallbackFunction::create (callback));
-}
-
-//==============================================================================
-Image juce_createIconForFile (const File&)
+Image detail::WindowingHelpers::createIconForFile (const File&)
 {
     return {};
 }

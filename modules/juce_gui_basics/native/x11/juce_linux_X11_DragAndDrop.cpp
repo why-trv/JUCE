@@ -159,7 +159,7 @@ public:
         const auto displays = Desktop::getInstance().getDisplays();
         const auto logicalPos = displays.physicalToLogical (Point<int> ((int) clientMsg.data.l[2] >> 16,
                                                                         (int) clientMsg.data.l[2] & 0xffff));
-        const auto dropPos = ScalingHelpers::screenPosToLocalPos (peer->getComponent(), logicalPos.toFloat()).roundToInt();
+        const auto dropPos = detail::ScalingHelpers::screenPosToLocalPos (peer->getComponent(), logicalPos.toFloat()).roundToInt();
 
         const auto& atoms = getAtoms();
 
@@ -543,7 +543,7 @@ private:
                                                    false,
                                                    AnyPropertyType);
 
-        if (prop.success && prop.data != None && prop.actualFormat == 32 && prop.numItems == 1)
+        if (prop.success && prop.data != nullptr && prop.actualFormat == 32 && prop.numItems == 1)
             return jmin ((int) prop.data[0], (int) XWindowSystemUtilities::Atoms::DndVersion);
 
         return -1;

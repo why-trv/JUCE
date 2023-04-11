@@ -139,7 +139,6 @@ namespace juce
     class Component;
     class LookAndFeel;
     class MouseInputSource;
-    class MouseInputSourceInternal;
     class ComponentPeer;
     class MouseEvent;
     struct MouseWheelDetails;
@@ -173,16 +172,27 @@ namespace juce
     class Displays;
     class AccessibilityHandler;
     class KeyboardFocusTraverser;
-    class PointerState;
 
     class FlexBox;
     class Grid;
     class FocusOutline;
 
-   #if JUCE_MAC || JUCE_WINDOWS || JUCE_LINUX
+   #if JUCE_MAC || JUCE_WINDOWS || JUCE_LINUX || JUCE_BSD
     Image createSnapshotOfNativeWindow (void* nativeWindowHandle);
    #endif
-}
+
+    namespace detail
+    {
+        struct ComponentHelpers;
+        class MouseInputSourceImpl;
+        class MouseInputSourceList;
+        class PointerState;
+        class ScopedMessageBoxImpl;
+        class ToolbarItemDragAndDropOverlayComponent;
+        class TopLevelWindowManager;
+    } // namespace detail
+
+} // namespace juce
 
 #include "mouse/juce_MouseCursor.h"
 #include "mouse/juce_MouseListener.h"
@@ -281,6 +291,7 @@ namespace juce
 #include "widgets/juce_TreeView.h"
 #include "windows/juce_TopLevelWindow.h"
 #include "windows/juce_MessageBoxOptions.h"
+#include "windows/juce_ScopedMessageBox.h"
 #include "windows/juce_AlertWindow.h"
 #include "windows/juce_CallOutBox.h"
 #include "windows/juce_ComponentPeer.h"
@@ -335,7 +346,9 @@ namespace juce
 #if JUCE_LINUX || JUCE_BSD
  #if JUCE_GUI_BASICS_INCLUDE_XHEADERS
   // If you're missing these headers, you need to install the libx11-dev package
+  JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wvariadic-macros")
   #include <X11/Xlib.h>
+  JUCE_END_IGNORE_WARNINGS_GCC_LIKE
   #include <X11/Xatom.h>
   #include <X11/Xresource.h>
   #include <X11/Xutil.h>

@@ -123,7 +123,7 @@ private:
             {
                 addMethod (@selector (accessibilityDataTableCellElementForRow:column:), [] (id self, SEL, NSUInteger row, NSUInteger column) -> id
                 {
-                    if (auto* tableHandler = getEnclosingHandlerWithInterface (getHandler (self), &AccessibilityHandler::getTableInterface))
+                    if (auto* tableHandler = detail::AccessibilityHelpers::getEnclosingHandlerWithInterface (getHandler (self), &AccessibilityHandler::getTableInterface))
                         if (auto* tableInterface = tableHandler->getTableInterface())
                             if (auto* cellHandler = tableInterface->getCellHandler ((int) row, (int) column))
                                 if (auto* parent = getAccessibleParent (cellHandler))
@@ -137,7 +137,7 @@ private:
 
                 addMethod (@selector (accessibilityHeaderElementsForColumn:), [] (id self, SEL, NSUInteger column) -> NSArray*
                 {
-                    if (auto* tableHandler = getEnclosingHandlerWithInterface (getHandler (self), &AccessibilityHandler::getTableInterface))
+                    if (auto* tableHandler = detail::AccessibilityHelpers::getEnclosingHandlerWithInterface (getHandler (self), &AccessibilityHandler::getTableInterface))
                     {
                         if (auto* tableInterface = tableHandler->getTableInterface())
                         {
@@ -245,7 +245,7 @@ private:
                 {
                     const auto isTableCell = [&]
                     {
-                        if (auto* tableHandler = getEnclosingHandlerWithInterface (&handlerRef, &AccessibilityHandler::getTableInterface))
+                        if (auto* tableHandler = detail::AccessibilityHelpers::getEnclosingHandlerWithInterface (&handlerRef, &AccessibilityHandler::getTableInterface))
                         {
                             if (auto* tableInterface = tableHandler->getTableInterface())
                             {
@@ -533,7 +533,17 @@ private:
                 {
                     const auto s = detail::makeCompileTimeStr (@encode (Result), @encode (id), @encode (SEL), @encode (Args)...);
                     const auto signature = [NSMethodSignature signatureWithObjCTypes: s.data()];
+
+                    if (signature == nullptr)
+                    {
+                        jassertfalse;
+                        return {};
+                    }
+
+                    JUCE_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wnullable-to-nonnull-conversion")
                     const auto invocation = [NSInvocation invocationWithMethodSignature: signature];
+                    JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+
                     invocation.selector = HasSelector::sel();
 
                     // Indices 0 and 1 are 'id self' and 'SEL _cmd' respectively
@@ -609,19 +619,19 @@ static void sendAccessibilityEvent (UIAccessibilityNotifications notification, i
     UIAccessibilityPostNotification (notification, argument);
 }
 
-void notifyAccessibilityEventInternal (const AccessibilityHandler& handler, InternalAccessibilityEvent eventType)
+void detail::AccessibilityHelpers::notifyAccessibilityEvent (const AccessibilityHandler& handler, Event eventType)
 {
     auto notification = [eventType]
     {
         switch (eventType)
         {
-            case InternalAccessibilityEvent::elementCreated:
-            case InternalAccessibilityEvent::elementDestroyed:
-            case InternalAccessibilityEvent::elementMovedOrResized:
-            case InternalAccessibilityEvent::focusChanged:           return UIAccessibilityLayoutChangedNotification;
+            case Event::elementCreated:
+            case Event::elementDestroyed:
+            case Event::elementMovedOrResized:
+            case Event::focusChanged:            return UIAccessibilityLayoutChangedNotification;
 
-            case InternalAccessibilityEvent::windowOpened:
-            case InternalAccessibilityEvent::windowClosed:           return UIAccessibilityScreenChangedNotification;
+            case Event::windowOpened:
+            case Event::windowClosed:            return UIAccessibilityScreenChangedNotification;
         }
 
         return UIAccessibilityNotifications{};
@@ -629,7 +639,7 @@ void notifyAccessibilityEventInternal (const AccessibilityHandler& handler, Inte
 
     if (notification != UIAccessibilityNotifications{})
     {
-        const bool moveToHandler = (eventType == InternalAccessibilityEvent::focusChanged && handler.hasFocus (false));
+        const bool moveToHandler = (eventType == Event::focusChanged && handler.hasFocus (false));
 
         sendAccessibilityEvent (notification,
                                 moveToHandler ? static_cast<id> (handler.getNativeImplementation()) : nil);

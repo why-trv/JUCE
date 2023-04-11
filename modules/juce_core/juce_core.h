@@ -40,7 +40,7 @@
   minimumCppStandard: 17
 
   dependencies:
-  OSXFrameworks:      Cocoa Foundation IOKit
+  OSXFrameworks:      Cocoa Foundation IOKit Security
   iOSFrameworks:      Foundation
   linuxLibs:          rt dl pthread
   mingwLibs:          uuid wsock32 wininet version ole32 ws2_32 oleaut32 imm32 comdlg32 shlwapi rpcrt4 winmm
@@ -276,6 +276,7 @@ JUCE_END_IGNORE_WARNINGS_MSVC
 #include "text/juce_LocalisedStrings.h"
 #include "text/juce_Base64.h"
 #include "misc/juce_Functional.h"
+#include "containers/juce_Span.h"
 #include "misc/juce_Result.h"
 #include "misc/juce_Uuid.h"
 #include "misc/juce_ConsoleApplication.h"

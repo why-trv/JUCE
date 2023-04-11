@@ -251,10 +251,13 @@ function(_juce_get_platform_plugin_kinds out)
     endif()
 
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
-        list(APPEND result Unity VST VST3 LV2)
+        list(APPEND result VST LV2)
+        if(NOT (CMAKE_SYSTEM_NAME MATCHES ".*BSD"))
+            list(APPEND result Unity VST3)
+        endif()
     endif()
 
-    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    if((CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "Windows") AND NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
         list(APPEND result AAX)
     endif()
 
@@ -310,7 +313,6 @@ endfunction()
 
 function(_juce_add_plugin_wrapper_target format path out_path)
     _juce_module_sources("${path}" "${out_path}" out_var headers)
-    list(FILTER out_var EXCLUDE REGEX "/juce_audio_plugin_client_utils.cpp$")
     set(target_name juce_audio_plugin_client_${format})
 
     _juce_add_interface_library("${target_name}" ${out_var})
@@ -448,16 +450,6 @@ function(juce_add_module module_path)
         foreach(kind IN LISTS plugin_kinds)
             _juce_add_plugin_wrapper_target(${kind} "${module_path}" "${base_path}")
         endforeach()
-
-        set(utils_source
-            "${base_path}/${module_name}/juce_audio_plugin_client_utils.cpp")
-        add_library(juce_audio_plugin_client_utils INTERFACE)
-        target_sources(juce_audio_plugin_client_utils INTERFACE "${utils_source}")
-
-        if(JUCE_ARG_ALIAS_NAMESPACE)
-            add_library(${JUCE_ARG_ALIAS_NAMESPACE}::juce_audio_plugin_client_utils
-                ALIAS juce_audio_plugin_client_utils)
-        endif()
 
         file(GLOB_RECURSE all_module_files
             CONFIGURE_DEPENDS LIST_DIRECTORIES FALSE

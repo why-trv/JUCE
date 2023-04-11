@@ -27,7 +27,10 @@ namespace juce
 {
 
 // Implemented in juce_win32_Messaging.cpp
+namespace detail
+{
 bool dispatchNextMessageOnSystemQueue (bool returnIfNoPendingMessages);
+} // namespace detail
 
 class Win32NativeFileChooser  : private Thread
 {
@@ -77,7 +80,7 @@ public:
 
         while (isThreadRunning())
         {
-            if (! dispatchNextMessageOnSystemQueue (true))
+            if (! detail::dispatchNextMessageOnSystemQueue (true))
                 Thread::sleep (1);
         }
     }
@@ -166,7 +169,7 @@ private:
         void operator() (LPWSTR ptr) const noexcept { CoTaskMemFree (ptr); }
     };
 
-    bool showDialog (IFileDialog& dialog, bool async)
+    bool showDialog (IFileDialog& dialog)
     {
         FILEOPENDIALOGOPTIONS flags = {};
 
@@ -285,7 +288,7 @@ private:
 
             Events events { *this };
             ScopedAdvise scope { dialog, events };
-            return dialog.Show (async ? nullptr : static_cast<HWND> (owner->getWindowHandle())) == S_OK;
+            return dialog.Show (GetActiveWindow()) == S_OK;
         }();
 
         ScopedLock lock (deletingDialog);
@@ -295,7 +298,7 @@ private:
     }
 
     //==============================================================================
-    Array<URL> openDialogVistaAndUp (bool async)
+    Array<URL> openDialogVistaAndUp()
     {
         const auto getUrl = [] (IShellItem& item)
         {
@@ -320,7 +323,7 @@ private:
             if (dialog == nullptr)
                 return {};
 
-            showDialog (*dialog, async);
+            showDialog (*dialog);
 
             const auto item = [&]
             {
@@ -350,7 +353,7 @@ private:
         if (dialog == nullptr)
             return {};
 
-        showDialog (*dialog, async);
+        showDialog (*dialog);
 
         const auto items = [&]
         {
@@ -391,7 +394,7 @@ private:
         if (selectsDirectories)
         {
             BROWSEINFO bi = {};
-            bi.hwndOwner = (HWND) (async ? nullptr : owner->getWindowHandle());
+            bi.hwndOwner = GetActiveWindow();
             bi.pszDisplayName = files;
             bi.lpszTitle = title.toWideCharPointer();
             bi.lParam = (LPARAM) this;
@@ -441,7 +444,7 @@ private:
                 startingFile.getFullPathName().copyToUTF16 (files, charsAvailableForResult * sizeof (WCHAR));
             }
 
-            of.hwndOwner = (HWND) (async ? nullptr : owner->getWindowHandle());
+            of.hwndOwner = GetActiveWindow();
             of.lpstrFilter = filters.getData();
             of.nFilterIndex = 1;
             of.lpstrFile = files;
@@ -502,7 +505,7 @@ private:
         if (SystemStats::getOperatingSystemType() >= SystemStats::WinVista
             && customComponent == nullptr)
         {
-            return openDialogVistaAndUp (async);
+            return openDialogVistaAndUp();
         }
 
         return openDialogPreVista (async);
@@ -578,19 +581,20 @@ private:
 
     String getDefaultFileExtension (const String& filename) const
     {
-        auto extension = filename.fromLastOccurrenceOf (".", false, false);
+        const auto extension = filename.contains (".") ? filename.fromLastOccurrenceOf (".", false, false)
+                                                       : String();
 
-        if (extension.isEmpty())
-        {
-            auto tokens = StringArray::fromTokens (filtersString, ";,", "\"'");
-            tokens.trim();
-            tokens.removeEmptyStrings();
+        if (! extension.isEmpty())
+            return extension;
 
-            if (tokens.size() == 1 && tokens[0].removeCharacters ("*.").isNotEmpty())
-                extension = tokens[0].fromFirstOccurrenceOf (".", false, false);
-        }
+        auto tokens = StringArray::fromTokens (filtersString, ";,", "\"'");
+        tokens.trim();
+        tokens.removeEmptyStrings();
 
-        return extension;
+        if (tokens.size() == 1 && tokens[0].removeCharacters ("*.").isNotEmpty())
+            return tokens[0].fromFirstOccurrenceOf (".", false, false);
+
+        return {};
     }
 
     //==============================================================================
@@ -789,7 +793,7 @@ public:
                    0, 0);
 
         setOpaque (true);
-        setAlwaysOnTop (juce_areThereAnyAlwaysOnTopWindows());
+        setAlwaysOnTop (detail::WindowingHelpers::areThereAnyAlwaysOnTopWindows());
         addToDesktop (0);
     }
 
