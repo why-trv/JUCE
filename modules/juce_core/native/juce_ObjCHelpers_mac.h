@@ -155,17 +155,6 @@ CGRect makeCGRect (const RectangleType& r) noexcept
                        static_cast<CGFloat> (r.getHeight()));
 }
 
-#if JUCE_IOS
-template <typename RectangleType>
-CGRect makeCGRect (const RectangleType& r) noexcept
-{
-    return CGRectMake (static_cast<CGFloat> (r.getX()),
-                       static_cast<CGFloat> (r.getY()),
-                       static_cast<CGFloat> (r.getWidth()),
-                       static_cast<CGFloat> (r.getHeight()));
-}
-#endif
-
 #if JUCE_INTEL
  template <typename T>
  struct NeedsStret
