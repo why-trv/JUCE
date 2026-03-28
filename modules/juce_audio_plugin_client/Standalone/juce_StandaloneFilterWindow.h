@@ -954,7 +954,7 @@ private:
             {
                 auto r = getLocalBounds().reduced (5);
 
-                settingsButton.setBounds (r.removeFromRight (70));
+                settingsButton.setBounds (r.removeFromRight (80));
                 notification.setBounds (r);
             }
         private:
