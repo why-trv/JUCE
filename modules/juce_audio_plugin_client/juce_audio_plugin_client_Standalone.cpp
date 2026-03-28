@@ -97,7 +97,7 @@ public:
         }
 
         return new StandaloneFilterWindow (getApplicationName(),
-                                           LookAndFeel::getDefaultLookAndFeel().findColour (ResizableWindow::backgroundColourId),
+                                           Colour(0xff121212),
                                            createPluginHolder());
     }
 
