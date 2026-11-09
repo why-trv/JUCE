@@ -200,7 +200,7 @@ namespace ColourHelpers
 
             y = 0.2999f * r + 0.5870f * g + 0.1140f * b;
             i = 0.5957f * r - 0.2744f * g - 0.3212f * b;
-            q = 0.2114f * r - 0.5225f * g - 0.3113f * b;
+            q = 0.2114f * r - 0.5225f * g + 0.3113f * b;
             alpha = c.getFloatAlpha();
         }
 
