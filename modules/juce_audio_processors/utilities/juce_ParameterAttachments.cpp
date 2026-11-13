@@ -182,6 +182,11 @@ void SliderParameterAttachment::sendInitialUpdate() { attachment.sendInitialUpda
 
 void SliderParameterAttachment::setValue (float newValue)
 {
+    // A drag owns the slider's value. Some hosts (Ableton Live's VST3) send the edits it
+    // makes back late, which would set the slider back a step or two at a time.
+    if (slider.getThumbBeingDragged() >= 0)
+        return;
+
     const ScopedValueSetter<bool> svs (ignoreCallbacks, true);
     slider.setValue (newValue, sendNotificationSync);
 }
